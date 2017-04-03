@@ -1,16 +1,5 @@
 #pragma once
 #include <cmath>
 
-struct xyz {
-	double x;
-	double y;
-	double z;
-};
-
-
-class Basic3dCalc
-{
-private:
-
-};
+int drawLines(draw_type, im, points, polygons);
 

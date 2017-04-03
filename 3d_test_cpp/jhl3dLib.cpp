@@ -1,3 +1,9 @@
+#include "stdafx.h"
+
+#include "basic3dCalc.h"
+#include "readData.h"
+
+#if 0
 int drawLines(draw_type, im, points, polygons)
 {
 
@@ -182,10 +188,12 @@ int drawLines(draw_type, im, points, polygons)
 		//        print("// z calc", z_calc)
 							else:
 	draw_type = 1
-		'''
+#if 0
 		elif(draw_type == 0) :
 		x = 0
 		elif(draw_type == 2) :
 		x = 0
-		'''
+#endif
 }
+
+#endif

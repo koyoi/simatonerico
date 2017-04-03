@@ -1,18 +1,7 @@
 #pragma once
-#include <cmath>
-
-struct xyz {
-	double x;
-	double y;
-	double z;
-};
+#include <string>
+#include "basic3dCalc.h"
 
 
-class Basic3dCalc
-{
-private:
-
-public:
-
-};
+int read_data(modelData& pol_model, std::string filename);
 

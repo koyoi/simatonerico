@@ -1,71 +1,73 @@
+#include "stdafx.h"
+
+#include <iostream>
+#include <cstring>
+
 #include "basic3dCalc.h"
 #include <cmath>
 
 
-bool Basic3dCalc::check_side(int pol_idx)
+modelData*	Basic3dCalc::tgtMdl;
+jhl_rgb		Basic3dCalc::light_ambient;
+dir_light	Basic3dCalc::light_directional[2];
+
+
+// 表裏判定
+float Basic3dCalc::check_side(int pol_idx)
 {
-	// 表裏判定
-	p0 = np.array(verts[0][0:3])
-		p1 = np.array(verts[1][0:3])
-		p2 = np.array(verts[2][0:3])
-		v1 = p1 - p0
-		v2 = p2 - p0
-		n = np.cross(v1, v2)
-		return(np.dot(n, [0, 0, -1])) // todo 視線は(0, 0, -1)に決まってる->計算量削減
+	// ポリゴンの頂点 p0,1,2 の作る面ベクトル v1=p1-p0, v2=p2-p0 の法線ベクトルが、視線(＝カメラ変換後なので、[0,0,-1]) と向き合うか？
+	// 最適化済み結果
+	pol_def	pol = tgtMdl->poldef[pol_idx];
+	jhl_xyz p[3];
+
+	p[0] = tgtMdl->vert[pol.a];
+	p[1] = tgtMdl->vert[pol.b];
+	p[2] = tgtMdl->vert[pol.c];
+	return( - (( p[1].x - p[0].x)*(p[2].y - p[0].y) - (p[0].x - p[2].x)*(p[1].y - p[0].y)) );
 }
 
 
-// (x,y,z) -> (x,y,z,1) たったこれだけのことをしたいだけなのに！
-int Basic3dCalc::to_homogenous(pos_screen)
-		t = list(pos_screen)
-		t.append(1)
-		return(np.matrix(t))
-}
 
-
-	// あたる光の色を計算
-	// 引数は各頂点の座標
-Basic3dCalc::calc_lighting(verts)
+// あたる光の色を計算
+// 引数は各頂点の座標
+// 環境光＋平行光(面との内積を取る)。返値と、面の色を掛けて
+jhl_rgb Basic3dCalc::calc_lighting(int pol_idx)
 {
-	res = light_ambient.copy()
-		p0 = np.array(verts[0])
-		p1 = np.array(verts[1])
-		p2 = np.array(verts[2])
-		v1 = p1 - p0
-		v2 = p2 - p0
-		n = np.cross(v1, v2)
-		//    print("points : ", (d0, d1, d2), ", normal: ", n)
-		n /= np.linalg.norm(n)
-		//    print("")
-		//    print("S", p0, p1, p2)
-		//    print("n", n)
-		for l in lights :
-	//    print("lights (dir, color)", l[0], l[1])
-	e = -np.dot(n, l[0])
-		//    print("eff of light", e)
-		if (e > 0) :
+	pol_def	pol = tgtMdl->poldef[pol_idx];
+	jhl_xyz p[3];
+
+	jhl_rgb rv = light_ambient;
+
+	jhl_xyz v1 = p[1] - p[0];
+	jhl_xyz v2 = p[2] - p[0];
+	jhl_xyz n = v1*v2;	// ベクトル積
+//	n /= n.norm;	todo ???
+
+	for (int i = 0; i < 2 ; i++)
+	{
+		float e = -n.dot(light_directional[i].dir);
+		if (e > 0)
+		{
 			//        print(" add light ", 1.*e*l[1])
-			res += e*l[1]
-			return (res)
+			rv += light_directional[i].col * e;
+		}
+	}
+	return (rv);
 }
 
 
-
-Basic3dCalc::proj_norm(wari, p0, p1)
+void Basic3dCalc::ident_matHomo4(matHomo4& t)
 {
-	rv = [0., 0., 0.]
-
-		rv[2] = 1 / ((1 - wari) / p0[2] + wari / p1[2])
-		rv[0] = ((p0[0] / p0[2]) * (1 - wari) + (p1[0] / p1[2]) * wari) * rv[2]
-		rv[1] = ((p0[1] / p0[2]) * (1 - wari) + (p1[1] / p1[2]) * wari) * rv[2]
-		return(rv)
+	std::memse memt[]
 }
+
+#if 0
 
 
 // /// 行列計算など　///
 
 // 平行移動
-void Basic3dCalc::trans(x, y, z)
+jhl_xyz Basic3dCalc::trans(x, y, z)
 {
 	t = i4.copy()
 		t[0, 3] = x
@@ -74,7 +76,7 @@ void Basic3dCalc::trans(x, y, z)
 		return t
 }
 	// 拡大縮小
-void Basic3dCalc::scale(s) {
+jhl_xyz Basic3dCalc::scale(s) {
 	t = i4.copy()
 		t[0, 0] = s
 		t[1, 1] = s
@@ -82,7 +84,7 @@ void Basic3dCalc::scale(s) {
 		return t
 }
 
-void Basic3dCalc::scale3(sx, sy, sz) {
+jhl_xyz Basic3dCalc::scale3(sx, sy, sz) {
 	t = i4.copy()
 		t[0, 0] = sx
 		t[1, 1] = sy
@@ -90,7 +92,7 @@ void Basic3dCalc::scale3(sx, sy, sz) {
 		return t
 }
 
-void Basic3dCalc::rot_axis_x(a) { // a[rad]
+jhl_xyz Basic3dCalc::rot_axis_x(a) { // a[rad]
 	t = i4.copy()
 		t[1, 1] = math.cos(a)
 		t[1, 2] = -math.sin(a)
@@ -99,7 +101,7 @@ void Basic3dCalc::rot_axis_x(a) { // a[rad]
 		return t
 }
 
-void Basic3dCalc::rot_axis_y(a)
+jhl_xyz Basic3dCalc::rot_axis_y(a)
 {
 	t = i4.copy()
 		t[0, 0] = math.cos(a)
@@ -108,7 +110,7 @@ void Basic3dCalc::rot_axis_y(a)
 		t[2, 2] = math.cos(a)
 		return t
 }
-void Basic3dCalc::rot_axis_z(a)
+jhl_xyz Basic3dCalc::rot_axis_z(a)
 {
 	t = i4.copy()
 		t[0, 0] = math.cos(a)
@@ -118,7 +120,7 @@ void Basic3dCalc::rot_axis_z(a)
 		return t
 }
 
-void 	Basic3dCalc:: rot_by_vec(l, m, n, s) : // (l, m, n) ベクトルを軸にs[rad]回転
+jhl_xyz Basic3dCalc::rot_by_vec(l, m, n, s) : // (l, m, n) ベクトルを軸にs[rad]回転
 {	// 単位ベクトルでないと拡縮、回転速度にも掛かる
 	t = i4.copy()
 		cs = math.cos(s)
@@ -165,7 +167,7 @@ void Basic3dCalc::view_mat(eye_loc, u_vec, tgt_loc)
 }
 
 
-void Basic3dCalc::norm_ortho(top, btm, left, right, far, near)
+matHomo4 Basic3dCalc::norm_ortho(top, btm, left, right, far, near)
 {
 	m0 = i4.copy()
 		rl = right - left
@@ -180,7 +182,7 @@ void Basic3dCalc::norm_ortho(top, btm, left, right, far, near)
 		return m0
 }
 
-void Basic3dCalc::norm_pers(top, btm, left, right, far, near)
+matHomo4 Basic3dCalc::norm_pers(top, btm, left, right, far, near)
 {
 	mp = i4.copy()
 		rl = right - left
@@ -198,9 +200,22 @@ void Basic3dCalc::norm_pers(top, btm, left, right, far, near)
 }
 
 
-	// 透視深度（？）
-	// Zやテクスチャ座標を計算するのに使う
-void Basic3dCalc::_toushi_shindo(points, far, near)
+// スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
+jhl_xyz Basic3dCalc::proj_norm(wari, p0, p1)
+{
+	rv = [0., 0., 0.]
+
+		rv[2] = 1 / ((1 - wari) / p0[2] + wari / p1[2])
+		rv[0] = ((p0[0] / p0[2]) * (1 - wari) + (p1[0] / p1[2]) * wari) * rv[2]
+		rv[1] = ((p0[1] / p0[2]) * (1 - wari) + (p1[1] / p1[2]) * wari) * rv[2]
+		return(rv)
+}
+
+
+
+// 透視深度（？）
+// Zやテクスチャ座標を計算するのに使う
+jhl_xyz Basic3dCalc::_toushi_shindo(points, far, near)
 {
 	//def pers_r(p, far, near) :
 	dest = []
@@ -212,6 +227,7 @@ void Basic3dCalc::_toushi_shindo(points, far, near)
 		dest.append((x, y, z))
 		return dest
 }
+
 
 // ポイントに透視変換までの変換を適用
 void Basic3dCalc::trans_vec(points, w) {
@@ -266,3 +282,6 @@ void  	Basic3dCalc::trans_disp(points)
 		dest.append(((viewport_trans.dot(temp.T)).T).tolist()[0])   // イヤ実装
 		return dest
 }
+
+#endif
+
