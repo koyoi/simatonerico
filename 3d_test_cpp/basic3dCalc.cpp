@@ -41,7 +41,7 @@ jhl_rgb Basic3dCalc::calc_lighting(int pol_idx)
 	jhl_xyz v1 = p[1] - p[0];
 	jhl_xyz v2 = p[2] - p[0];
 	jhl_xyz n = v1*v2;	// ベクトル積
-//	n /= n.norm;	todo ???
+	n /= n.norm();
 
 	for (int i = 0; i < 2 ; i++)
 	{
@@ -56,117 +56,29 @@ jhl_rgb Basic3dCalc::calc_lighting(int pol_idx)
 }
 
 
-void Basic3dCalc::ident_matHomo4(matHomo4& t)
+void Basic3dCalc::view_mat(matHomo4& eye_vec, const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc)
 {
-	std::memse memt[]
-}
-
-#if 0
-
-
-// /// 行列計算など　///
-
-// 平行移動
-jhl_xyz Basic3dCalc::trans(x, y, z)
-{
-	t = i4.copy()
-		t[0, 3] = x
-		t[1, 3] = y
-		t[2, 3] = z
-		return t
-}
-	// 拡大縮小
-jhl_xyz Basic3dCalc::scale(s) {
-	t = i4.copy()
-		t[0, 0] = s
-		t[1, 1] = s
-		t[2, 2] = s
-		return t
-}
-
-jhl_xyz Basic3dCalc::scale3(sx, sy, sz) {
-	t = i4.copy()
-		t[0, 0] = sx
-		t[1, 1] = sy
-		t[2, 2] = sz
-		return t
-}
-
-jhl_xyz Basic3dCalc::rot_axis_x(a) { // a[rad]
-	t = i4.copy()
-		t[1, 1] = math.cos(a)
-		t[1, 2] = -math.sin(a)
-		t[2, 1] = math.sin(a)
-		t[2, 2] = math.cos(a)
-		return t
-}
-
-jhl_xyz Basic3dCalc::rot_axis_y(a)
-{
-	t = i4.copy()
-		t[0, 0] = math.cos(a)
-		t[0, 2] = math.sin(a)
-		t[2, 0] = -math.sin(a)
-		t[2, 2] = math.cos(a)
-		return t
-}
-jhl_xyz Basic3dCalc::rot_axis_z(a)
-{
-	t = i4.copy()
-		t[0, 0] = math.cos(a)
-		t[0, 1] = -math.sin(a)
-		t[1, 0] = math.sin(a)
-		t[1, 1] = math.cos(a)
-		return t
-}
-
-jhl_xyz Basic3dCalc::rot_by_vec(l, m, n, s) : // (l, m, n) ベクトルを軸にs[rad]回転
-{	// 単位ベクトルでないと拡縮、回転速度にも掛かる
-	t = i4.copy()
-		cs = math.cos(s)
-		ss = math.sin(s)
-
-		t[0, 0] = l*l*(1 - cs) + cs
-		t[0, 1] = l*m*(1 - cs) - n*ss
-		t[0, 2] = l*n*(1 - cs) + m*ss
-		t[1, 0] = l*m*(1 - cs) + n*ss
-		t[1, 1] = m*m*(1 - cs) + cs
-		t[1, 2] = m*n*(1 - cs) - l*ss
-		t[2, 0] = l*n*(1 - cs) - m*ss
-		t[2, 1] = m*n*(1 - cs) + l*ss
-		t[2, 2] = n*n*(1 - cs) + cs
-		return t
+	// todo
 }
 
 
-
-void Basic3dCalc::view_mat(eye_loc, u_vec, tgt_loc)
+matHomo4 Basic3dCalc::view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc)
 {
 	// t : 視線方向の逆ベクトル
 	// r : 視線をｚ方向としたときの、x方向に当たるベクトル
 	// s : 同、y方向
-	t = eye_loc - tgt_loc
-		r = np.cross(u_vec, t)
-		s = np.cross(t, r)
+	jhl_xyz t,r,s;
 
-		t_n = np.linalg.norm(t)
-		r_n = np.linalg.norm(r)
-		s_n = np.linalg.norm(s)
+	t = eye_loc - tgt_loc;
+	r = u_vec * t;
+	s = t * r;
 
-		rv = i4.copy()
-		rv[0, 0:3] = r[0:3] / r_n
-		rv[1, 0:3] = s[0:3] / s_n
-		rv[2, 0:3] = t[0:3] / t_n
-		rv[0, 3] = -eye_loc[0]
-		rv[1, 3] = -eye_loc[1]
-		rv[2, 3] = -eye_loc[2]
-
-		//    print("rv")
-		//    print(rv)
-		return rv
+	matHomo4 rv(r / r.norm(), s / s.norm(), t / t.norm(), -eye_loc);
+	return(rv);
 }
 
 
+#if 0
 matHomo4 Basic3dCalc::norm_ortho(top, btm, left, right, far, near)
 {
 	m0 = i4.copy()
@@ -285,3 +197,57 @@ void  	Basic3dCalc::trans_disp(points)
 
 #endif
 
+void modelData::dataDump(void)
+{
+	using namespace std;
+	{
+		cout << "vertex : " << n_vert << endl;
+		jhl_xyz* t = new jhl_xyz[n_vert];
+		t = vert;							// todo orz
+		for (int i = 0; i < n_vert; i++)
+		{
+			cout << i << ": ( " << t[i].x << ", " << t[i].y << ", " << t[i].z << " )" << endl;
+		}
+		delete t;
+	}
+
+	{
+		cout << "polygon : " << n_pol << endl;
+		pol_def* t = new pol_def[n_pol];
+		t = poldef;
+
+		for (int i = 0; i < n_pol; i++)
+		{
+			cout << i << " : ( " << t[i].a << ", " << t[i].b << ", " << t[i].c << " )" << endl;
+		}
+	}
+
+	{
+		cout << "attributes : " << endl;
+		for (int i = 0; i < n_group; i++)
+		{
+			grpAttrib t = attr[i];
+
+			cout << " member : ";
+			for (int j = 0; j < t.n_member; j++)
+			{
+				cout << t.member[j] << " ,";
+			}
+			cout << endl;
+
+			if (t.pTex == 0)
+			{
+				cout << " no texture" << endl;
+			}
+			else
+			{
+				// todo to be written
+				//	char*	texName;
+				// char*	pTex;
+				// texUv*	uv;
+			}
+
+			cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
+		}
+	}
+}

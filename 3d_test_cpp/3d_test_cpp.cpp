@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include <iostream>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -10,16 +11,29 @@
 #include "hal_graphics.h"
 
 
-const int window_v = 480;
-const int window_h = 640;
-const std::string data_file = { "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat.txt" };
-
+const unsigned int window_v = 480;
+const unsigned int window_h = 640;
+#if 0
+const std::string data_file[] = { "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat.txt",
+								  "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat_cube.txt" };
+#else
+const std::string data_file[] = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data\\dat.txt",
+								  "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data\\dat_cube.txt" };
+#endif
 
 #ifdef _WIN32_
 #define print	printf
 
 #endif
 
+
+#define N_PARA_LIGHTS	2
+
+struct polObjs {
+	matHomo4	aff;
+	matHomo4	size;	// todo mathomo4である必要なし
+	modelData	model;
+};
 
 
 int
@@ -40,76 +54,97 @@ main(int argc, char *argv[])
 
 	bool	viewport_changed = true;
 
-	double  frame_pause = 0;
-	double	frame_time = 0.3;
+	float	frame_pause = 0;
+	float	frame_time = 0.3f;
 
-	jhl_rgb light_ambient = { .15, .15, .15 };
-	dir_light lights[] = {		// 並行光源　方向、色。方向は、正規化してないと不正になるかも
-		{ { 0, 1, 0}, {0, .7, .5 }},
-		{ { 0.1, -.78, 0.2}, { .5, 0., 0. }} };
+	jhl_rgb light_ambient = { .15f, .15f, .15f };
+	dir_light lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
 
 // ***************************************************************
 	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
-//	disp_init(window_v, window_h);
+	disp_init(window_v, window_h);
 
-	modelData pol_model;
-	(void)read_data(pol_model, data_file);
+	const int num_obj = 2;
+	polObjs	objects[num_obj];
 
-	print("read data");
-	print("vertxes : ", pol_model.n_vert, " polygons : ", pol_model.n_pol, "\n" );
+	// ファイル読み込み
+	std::cout << "read data" << std::endl;
 
+	int rv = 0;
+	for (int i = 0; i < num_obj; i++)
+	{
+		if (read_data(objects[i].model, data_file[i]) <= 0) {
+			std::cout << "file read error. abort." << std::endl;
+			exit(-1);
+		}
+		else
+		{
+			std::cout << std::endl << "obj id: " << i << std::endl;
+			objects[i].model.dataDump();
+			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
+		}
+	}
+
+	// 初期設定
 	jhl_rgb line_color = jhl_rgb(210, 150, 130);
 	int line_width = 1;
 
-	t = np.copy(i4) // オブジェクトの変形行列
-	//t = trans(1, 2, 3)*t
-	//t = scale(1.1)*t
-	t = rot_axis_x(math.radians(2))*t
-	t = rot_axis_y(math.radians(3.5))*t
-	t = rot_axis_z(math.radians(4.8))*t
-	//t = rot_by_vec(0, 0, 0, math.radians(5))*t
+	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f);
+	lights[0].col = jhl_rgb(0.f, .7f, .5f);
+
+	lights[1].dir = jhl_xyz(0.1f, -.78f, 0.2f);
+	lights[1].col = jhl_rgb(.5f, 0.f, 0.f);
+
+
+	objects[0].size.i();
+	objects[0].size.scale(1, 2, 3);
+
+	objects[0].aff.i();
+	objects[0].aff.trans(1, 2, 3);
+	objects[0].aff.rot_axis_x( 0.2f );
+	objects[0].aff.rot_axis_y( 0.3f );
+	objects[0].aff.rot_axis_z( 0.4f );
+	objects[0].aff.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f );
+
+	// オブジェクトの位置
+	std::cout << objects[0].aff << ", " << objects[0].size << std::endl;
+
+	jhl_xyz eye = jhl_xyz(0.f, 0.f, 20.f);
+	jhl_xyz tgt = jhl_xyz(0.f, 0.f, 0.f);
+	jhl_xyz	u   = jhl_xyz(0.f, 1.f, 0.f);
+
+	matHomo4 eye_vec;
+	Basic3dCalc::view_mat(eye_vec, eye, u, tgt);  // 視線ベクトル生成
+
+	eye_vec.show();
 
 
 #if 0
-		// todo ここまで //
-		r = trans(r_x, r_y, r_z)    // オブジェクトの位置
-		print("r")
-		print(r)
-
-		eye = np.array([0., 0, 20])
-		tgt = np.array([0., 0, 0])
-		u = np.array([0., 1, 0])
-
-		eye_vec = view_mat(eye, u, tgt)  // 視点
-		print("eye")
-		print(eye_vec)
-
-
 		viewport_trans = disp_trans(window_h, window_v)
-		print("viewport_trans")
-		print(viewport_trans)
-		viewport_trans_inv = np.linalg.inv(viewport_trans)   // スクリーン座標から、元の正規化座標へ。テクスチャを取ったりするのに使う
+	print("viewport_trans")
+	print(viewport_trans)
+	viewport_trans_inv = np.linalg.inv(viewport_trans)   // スクリーン座標から、元の正規化座標へ。テクスチャを取ったりするのに使う
 
 
-		cv2.namedWindow("img")//), cv2.WINDOW_KEEPRATIO)
+	cv2.namedWindow("img")//), cv2.WINDOW_KEEPRATIO)
 
-		// マウスイベント時に関数mouse_eventの処理を行う
-		//cv2.setMouseCallback("img", mouse_event)   重いし、おかしい？
+	// マウスイベント時に関数mouse_eventの処理を行う
+	//cv2.setMouseCallback("img", mouse_event)   重いし、おかしい？
 
-		cv2.imshow("img", img)
+	cv2.imshow("img", img)
 
-		font = cv2.FONT_HERSHEY_PLAIN
-		font_size = 1
+	font = cv2.FONT_HERSHEY_PLAIN
+	font_size = 1
 
-		time_elapsed = 0
+	time_elapsed = 0
 
 
-		t_work = np.copy(t)   // 変形行列
+	t_work = np.copy(t)   // 変形行列
 
-		print("\"q\" to exit.")
-		k = 1
-		while (k != ord("q")) :
+	print("\"q\" to exit.")
+	k = 1
+			while (k != ord("q")) :
 			k = cv2.waitKey(1) & 0xFF
 			proc_key(k)
 			if (frame_pause == 1) :

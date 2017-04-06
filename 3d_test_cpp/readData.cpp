@@ -7,20 +7,9 @@
 
 #include "basic3dCalc.h"
 
-#if 0
-enum file_read_state{
-	EN_FRS_init,
-	EN_FRS_verts,
-	EN_FRS_poldef,
-	EN_FRS_group,	// １行しかないはず
-	
-	EN_FRS_color,	// 1行しかないはず
-	EN_FRS_member,
-	EN_FRS_uv,
-};
-#endif
 
-int read_data(modelData& pol_model, std::string filename)
+
+int read_data(modelData& model, std::string filename)
 {
 	std::ifstream reading_file(filename);
 	if (reading_file.fail())
@@ -29,18 +18,14 @@ int read_data(modelData& pol_model, std::string filename)
 		return 0;
 	}
 
-	modelData model;
-
 	std::string reading_line_buffer;
 
 	std::string separated_string_buffer[3];
 	char delimiter = ',';
 
-	int cnt_vert = 0;
-	int cnt_pol = 0;
-	int cnt_member = 0;
-	int field_size = 0;
 	int group_target = 0;
+
+	grpAttrib *grp_tgt;
 
 	// todo エラー時の既確保の解放
 	while ( std::getline(reading_file, reading_line_buffer) )
@@ -61,10 +46,9 @@ int read_data(modelData& pol_model, std::string filename)
 					return 0;
 				}
 
-				while (cnt_vert < model.n_vert)
+				for ( int cnt_vert = 0; cnt_vert< model.n_vert; cnt_vert++ )
 				{
 					reading_file >> model.vert[cnt_vert].x >> delimiter >> model.vert[cnt_vert].y >> delimiter >> model.vert[cnt_vert].z;
-					cnt_vert++;
 				}
 			}
 
@@ -78,18 +62,16 @@ int read_data(modelData& pol_model, std::string filename)
 					return 0;
 				}
 
-				while (cnt_pol < model.n_pol)
+				for ( int cnt_pol = 0; cnt_pol < model.n_pol; cnt_pol++)
 				{
 					reading_file >> model.poldef[cnt_pol].a >> delimiter >> model.poldef[cnt_pol].b >> delimiter >> model.poldef[cnt_pol].c;
-					cnt_pol++;
-					break;
 				}
 			}
 
 			else if (reading_line_buffer == ":groups")
 			{
-				reading_file >> field_size;
-				model.attr = new polAttrib[field_size];
+				reading_file >> model.n_group;
+				model.attr = new grpAttrib[model.n_group];
 				if (model.attr == NULL)
 				{
 					std::cout << "attrib buff allocate failed" << std::endl;
@@ -101,6 +83,9 @@ int read_data(modelData& pol_model, std::string filename)
 			{
 				reading_file >> group_target;
 				group_target--;
+				grp_tgt = &model.attr[group_target];
+				grp_tgt->pTex = NULL;
+				grp_tgt->color = jhl_rgb(0,0,0);
 			}
 
 			else if (reading_line_buffer == "::color")
@@ -110,23 +95,38 @@ int read_data(modelData& pol_model, std::string filename)
 
 			else if (reading_line_buffer == "::member")
 			{
-				reading_file >> field_size;
-				model.attr[group_target].member = new int[field_size];
+				reading_file >> grp_tgt->n_member;
+				grp_tgt->member = new int[grp_tgt->n_member];
 				if (model.attr == NULL)
 				{
 					std::cout << "attrib buff allocate failed" << std::endl;
 					return 0;
 				}
-				cnt_member = 0;
+
+				/* カンマ区切り対応大変！
+				// todo
+				std::string split_temp, split_temp2;
+				int pos;
 				while (cnt_member < field_size)
 				{
-					reading_file >> model.attr[group_target].member[cnt_member];
-					cnt_member++;
-					// todo 複数
+					std::getline(reading_file, split_temp);
+					do {
+						pos = split_temp.find_first_of(',');
+						model.attr[group_target].member[cnt_member] = atoi(split_temp.substr(0, pos - 1).c_str() );
+						split_temp = split_temp.substr(pos + 1);
+						cnt_member++;
+					} while (split_temp.size() != 0);
+				}
+				*/
+				for (int cnt_member = 0; cnt_member < grp_tgt->n_member; cnt_member++)
+				{
+					reading_file >> grp_tgt->member[cnt_member];
 				}
 			}
 
-			else if (reading_line_buffer == "::texName")	// todo
+			// todo 以下コピペしただけ
+#if 0
+			else if (reading_line_buffer == "::texName")
 			{
 				reading_file >> model.attr[group_target].texName;
 			}
@@ -134,14 +134,14 @@ int read_data(modelData& pol_model, std::string filename)
 			else if (reading_line_buffer == "::UV")	// todo
 			{
 				reading_file >> field_size;
-				model.attr = new polAttrib[field_size];
+				model.attr = new grpAttrib[field_size];
 				if (model.attr == NULL)
 				{
 					std::cout << "attrib buff allocate failed" << std::endl;
 					return 0;
 				}
 			}
-
+#endif
 			else
 			{
 				std::cout << "error: file format error. unknown tag " << reading_line_buffer << ". abort." << std::endl;

@@ -8,7 +8,7 @@
 void disp_init(unsigned int window_v, unsigned int window_h)
 {
 	cv::Mat img(cv::Size(window_h, window_v), CV_8UC3, cv::Scalar(0, 0, 0));
-	cv::Mat img_z(cv::Size(window_h, window_v), CV_16UC1, 0);
+	cv::Mat img_z(cv::Size(window_h, window_v), CV_16UC1, cv::Scalar(0));
 }
 
 #if 0
