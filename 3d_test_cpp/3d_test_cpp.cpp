@@ -5,14 +5,14 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include "basic3dCalc.h"
+#include "jhl3dLib.h"
 #include "readData.h"
 
 #include "hal_graphics.h"
 
 
-const unsigned int window_v = 480;
-const unsigned int window_h = 640;
+jhl_xy_i window = { 640, 480 };
+
 #if 0
 const std::string data_file[] = { "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat.txt",
 								  "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat_cube.txt" };
@@ -21,67 +21,94 @@ const std::string data_file[] = { "L:\\users\\mayura.kage7\\Documents\\My Dropbo
 								  "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data\\dat_cube.txt" };
 #endif
 
+
 #ifdef _WIN32_
-#define print	printf
+//#define print	printf
+disp_ocv2	painter;
 
 #endif
 
 
-#define N_PARA_LIGHTS	2
+// ---------------------------------------------------
+static void mouse_event(int event, int x, int y, int flags, void* param);
+static int proc_key(char);
+static void draw_info();
 
-struct polObjs {
-	matHomo4	aff;
-	matHomo4	size;	// todo mathomo4である必要なし
-	modelData	model;
+
+// ---------------------------------------------------
+struct sceneObj
+{
+	//	jhl_xyz		ofst;
+	matHomo4	trans;
+	matHomo4	acc;
+	jhl_xyz		size;
+	//	jhl_xyz	move_vect_ofst;		// todo モデルローカルの原点から、オフセットをつけて、特に回転を掛けたいときのため。
+	bool	is_moved;
+	// 他、雑多
 };
+
+
+
+// ---------------------------------------------------
+#define N_PARA_LIGHTS	2
+const int NUM_OBJ = 2;
+
+int		param1 = 0;
+int		param2 = 0;
+long	time_elapsed = 0;
+
+viewport_config	viewport_area;
+bool	area_changed = true;
+
+sceneObj	obj[NUM_OBJ];		//	位置・回転、速度その他諸々
+
+bool	frame_pause = false;
+
+
+
 
 
 int
 main(int argc, char *argv[])
 {
 	CvScalar font_color_info_defaut = CV_RGB( 0, 255, 255 );
-	En_draw_type	draw_type = drawType_flat;
+	unsigned long	frame_time = 300;	// [ms]
 
-	jhl_xyz	obj_pos = { 3, 2, -20 };
-	bool	obj_pos_changed = true;
+	{
+		const int far = 40;
+		const int near = 5;
+		const int left = -5;
+		const int right = -left;
+		const int top = -left*(window.x / window.y);
+		const int btm = -top;
+		viewport_area = { far, near,  left, right, top, btm };
+	}
+	jhl3Dlib::set_proj_mat_norm(viewport_area);
+//	jhl3Dlib::set_proj_mat_ortho(viewport_area);
 
-	int		param1 = 0;
-	int		param2 = 0;
-
-	viewport_config	viewport_area = { 40,5,  -5,5, 5,-5 };
-	viewport_area.top = viewport_area.right * window_h / window_v;
-	viewport_area.btm = -viewport_area.top;
-
-	bool	viewport_changed = true;
-
-	float	frame_pause = 0;
-	float	frame_time = 0.3f;
 
 	jhl_rgb light_ambient = { .15f, .15f, .15f };
 	dir_light lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
+	painter.disp_init(window);	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
 
-// ***************************************************************
-	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
-	disp_init(window_v, window_h);
+	polMdl		models[NUM_OBJ];	//	ポリゴンモデルそのものと、それに適用するアフィン変換の最終的なマトリックス
 
-	const int num_obj = 2;
-	polObjs	objects[num_obj];
 
 	// ファイル読み込み
 	std::cout << "read data" << std::endl;
 
 	int rv = 0;
-	for (int i = 0; i < num_obj; i++)
+	for (int i = 0; i < NUM_OBJ; i++)
 	{
-		if (read_data(objects[i].model, data_file[i]) <= 0) {
+		if (read_data(models[i].model, data_file[i]) <= 0) {
 			std::cout << "file read error. abort." << std::endl;
 			exit(-1);
 		}
 		else
 		{
 			std::cout << std::endl << "obj id: " << i << std::endl;
-			objects[i].model.dataDump();
+			modelData::dataDump( models[i].model );
 			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
 		}
 	}
@@ -97,115 +124,122 @@ main(int argc, char *argv[])
 	lights[1].col = jhl_rgb(.5f, 0.f, 0.f);
 
 
-	objects[0].size.i();
-	objects[0].size.scale(1, 2, 3);
-
-	objects[0].aff.i();
-	objects[0].aff.trans(1, 2, 3);
-	objects[0].aff.rot_axis_x( 0.2f );
-	objects[0].aff.rot_axis_y( 0.3f );
-	objects[0].aff.rot_axis_z( 0.4f );
-	objects[0].aff.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f );
-
-	// オブジェクトの位置
-	std::cout << objects[0].aff << ", " << objects[0].size << std::endl;
-
+	// ビュー行列生成
 	jhl_xyz eye = jhl_xyz(0.f, 0.f, 20.f);
 	jhl_xyz tgt = jhl_xyz(0.f, 0.f, 0.f);
 	jhl_xyz	u   = jhl_xyz(0.f, 1.f, 0.f);
-
-	matHomo4 eye_vec;
-	Basic3dCalc::view_mat(eye_vec, eye, u, tgt);  // 視線ベクトル生成
-
-	eye_vec.show();
+	jhl3Dlib::set_view_mat(eye, u, tgt);  
+	std::cout << jhl3Dlib::view_mat << std::endl;
 
 
-#if 0
-		viewport_trans = disp_trans(window_h, window_v)
-	print("viewport_trans")
-	print(viewport_trans)
-	viewport_trans_inv = np.linalg.inv(viewport_trans)   // スクリーン座標から、元の正規化座標へ。テクスチャを取ったりするのに使う
+	// オブジェクトの位置
+	obj[0].trans = matHomo4(jhl_xyz (-2,0,0) );
+	obj[0].trans.rot_axis_x(0.2f);
+	obj[0].trans.rot_axis_y(0.3f);
+	obj[0].trans.rot_axis_z(0.4f);
+	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	obj[0].acc = matHomo4(1);
+	obj[0].acc.rot_axis_x(0.2f);
+	obj[0].acc.rot_axis_y(0.3f);
+	obj[0].acc.rot_axis_z(0.4f);
+	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	obj[0].size = jhl_xyz(1);
+	obj[0].size *= jhl_xyz(1, 2, 3);
+	obj[0].is_moved = true;
+
+	obj[1].trans = matHomo4(jhl_xyz(1, 1, 1));
+	obj[1].acc = matHomo4(1);
+	obj[1].acc.rot_axis_x(0.2f);
+	obj[1].acc.rot_axis_y(0.3f);
+	obj[1].acc.rot_axis_z(0.4f);
+	obj[1].is_moved = true;
 
 
-	cv2.namedWindow("img")//), cv2.WINDOW_KEEPRATIO)
+	// ディスプレイ座標系へ
+	jhl3Dlib::set_disp_trans(window);
+	std::cout << "viewport_trans" << jhl3Dlib::disp_mat << std::endl;
+
+	painter.disp_init(window);
 
 	// マウスイベント時に関数mouse_eventの処理を行う
-	//cv2.setMouseCallback("img", mouse_event)   重いし、おかしい？
+#ifdef _WIN32_
+	cv::setMouseCallback("img", mouse_event);//   重いし、おかしい？
+#else
+#endif
 
-	cv2.imshow("img", img)
+	painter.disp_show();
+#ifdef _WIN32_
+	painter.fontInit();
+#else
+#endif
 
-	font = cv2.FONT_HERSHEY_PLAIN
-	font_size = 1
+	time_elapsed = 0;
 
-	time_elapsed = 0
+	matHomo4 t_work(1);
 
+	std::cout << "\"q\" to exit." << std::endl;
 
-	t_work = np.copy(t)   // 変形行列
+	char k = 1;
+	while (k != 'q')
+	{
+		k = cv::waitKey(1);
+		proc_key(k);
+		if (frame_pause) {
+			_sleep(100);
+			continue;    // 次のループへ
+		}
 
-	print("\"q\" to exit.")
-	k = 1
-			while (k != ord("q")) :
-			k = cv2.waitKey(1) & 0xFF
-			proc_key(k)
-			if (frame_pause == 1) :
-				time.sleep(0.1)
-				continue    // 次のループへ
+		std::cout << std::endl << "frame " << time_elapsed << std::endl;
 
-				print("")
-				print("frame", time_elapsed)
+		if (area_changed)	// UI操作
+		{
+			jhl3Dlib::set_proj_mat_norm(viewport_area);
+			//	jhl3Dlib::set_proj_mat_ortho(viewport_area);
+			area_changed = false;
+		}
 
-				if (area_changed == 1) :
-					area_changed = 0
-					//area = norm_ortho(area_size, -area_size, area_size*window_aspect, -area_size*window_aspect, area_far, area_near)
-					area = norm_pers(area_size, -area_size, area_size*window_aspect, -area_size*window_aspect, area_far, area_near)
-					print("area")
-					print(area)
+		// if(r_moved)	// UI操作
+		{
+			// ここでは処理不要
+		}
 
-					if (r_moved == 1) :
-						r_moved = 0;
-	r = trans(r_x, r_y, r_z)    // オブジェクトの位置
-		print("r")
-		print(r)
+		painter.disp_clear();
 
+		// 時刻更新でのオブジェクト変更だとか
+		for (int i = 0; i < NUM_OBJ; i++)
+		{
+			obj[i].trans *= obj[i].acc;
+			models[i].model_mat = obj[i].trans;
+		}
 
-		img.fill(0)
-		img_z.fill(0)
+		int rv;
+		// 実際の描画
+		for (int i = 0; i < NUM_OBJ; i++)
+		{
+			obj[i].trans += obj[i].acc;
+			models[0].model_mat = obj[i].trans * obj[i].size;
 
-		t_work = t.dot(t_work)       // モデルの回転、拡大縮小(、・移動)行列の更新
+			// 局所的な変換（アニメーションやボーン変形）
+			rv = jhl3Dlib::drawLines(models[i]);
 
-		temp = r.dot(t_work)         // モデルの移動
-		temp = eye_vec.dot(temp)     // 視点の指定
-		temp = area.dot(temp)        // 投影変換       // todo z が正規化範囲から出てしまう？？　
-		//    print("mat: obj trans")
-		//    print(temp)
-		//    print("vec: model points")
-		//    print(points)
-		poi_trans = trans_vec(points, temp) //諸々の変換をモデルに施す
-		//    print("transed points")
-		//   for v in pols :
-	//       print(v)
-		drawLines(3, img, poi_trans, polygons[0][2])
-		//    drawLines(2, img, poi_trans, polygons[0][2])
-
-		//    quit()
-
+		}
 		// ui
-		draw_info()
+		draw_info();
 
-		cv2.imshow("img", img)
-		cv2.imshow("img_z", img_z)
+		painter.disp_swap();
 
-		time.sleep(frame_time)
-		time_elapsed += 1
+		_sleep(frame_time);
+		time_elapsed += 1;
+	}
 
-		cv2.destroyAllWindows()
+	painter.disp_destroy();
 
-		print("--- end ---")
+	std::cout << "--- end ---" << std::endl;
 
-
-
-		// 初期化時に塗りつぶす
-		cv::Mat red_img(cv::Size(640, 480), CV_8UC3, cv::Scalar(0, 0, 255));
+#if 0
+		// open cv test app
+	// 初期化時に塗りつぶす
+	cv::Mat red_img(cv::Size(640, 480), CV_8UC3, cv::Scalar(0, 0, 255));
 	cv::Mat white_img(cv::Size(640, 480), CV_8UC3, cv::Scalar::all(255));
 	cv::Mat black_img = cv::Mat::zeros(cv::Size(640, 480), CV_8UC3);
 
@@ -217,7 +251,6 @@ main(int argc, char *argv[])
 	cv::namedWindow("white image", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	cv::namedWindow("black image", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	cv::namedWindow("green image", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-	cv::imshow("red image", red_img);
 	cv::imshow("white image", white_img);
 	cv::imshow("black image", black_img);
 	cv::imshow("green image", green_img);
@@ -228,67 +261,80 @@ main(int argc, char *argv[])
 
 
 
-int proc_key(unsigned char key)
+
+int proc_key(char key)
 {
-#if 0
-	global r_x, r_y, r_z, r_moved
-		global area_far, area_near, area_changed
-		global draw_type
-		global frame_pause
+	// カメラの変化
+	switch (key)
+	{
+	case('g'):
+		viewport_area.far += 1;
+		area_changed = 1;
+		break;
+	case('b'):
+		viewport_area.far -= 1;
+		if (viewport_area.far == viewport_area.near)
+		{
+			viewport_area.far += 1;
+		}
+		area_changed = 1;
+		break;
+	case('f'):
+		viewport_area.near += 1;
+		if (viewport_area.far == viewport_area.near)
+		{
+			viewport_area.near -= 1;
+		}
+		area_changed = 1;
+		break;
+	case('v'):
+		viewport_area.near -= 1;
+		area_changed = 1;
+		break;
 
-		// カメラの変化
-		if (k == ord("g")) :
-			area_far += 1
-			area_changed = 1
-			if (area_far == area_near) :
-				area_far -= 1
-				elif(k == ord("b")) :
-				area_far -= 1
-				area_changed = 1
-				if (area_far == area_near) :
-					area_far += 1
-					elif(k == ord("f")) :
-					area_near += 1
-					area_changed = 1
-					if (area_far == area_near) :
-						area_near -= 1
-						elif(k == ord("v")) :
-						area_near -= 1
-						area_changed = 1
-						if (area_far == area_near) :
-							area_near += 1
 
-							// レンダリングタイプ変更
-							elif(k == ord("t")) :
-							draw_type += 1
+		// レンダリングタイプ変更
+	case('t'):
+		jhl3Dlib::draw_type_next();
+		break;
 
-							// オブジェクトの位置
-							elif(k == ord("s")) :
-							r_y += 1.
-							r_moved = 1
-							elif(k == ord("x")) :
-							r_y -= 1.
-							r_moved = 1
-							elif(k == ord("z")) :
-							r_x -= 1.
-							r_moved = 1
-							elif(k == ord("c")) :
-							r_x += 1.
-							r_moved = 1
-							elif(k == ord("w")) :
-							r_x = 0.
-							r_y = 0.
-							r_moved = 1
+		// オブジェクトの位置
+	case('s'):
+		obj[0].trans.trans(0, 1, 0);
+		break;
+	case('x'):
+		obj[0].trans.trans(0, -1, 0);
+		break;
+	case('z'):
+		obj[0].trans.trans(-1, 0, 0);
+		break;
+	case('c'):
+		obj[0].trans.trans(1, 0, 0);
+		break;
+	case('w'):
+		// reset
+		obj[0].trans.v[0] = 0;
+		obj[0].trans.v[1] = 0;
+		obj[0].trans.v[2] = 0;
+		obj[0].trans.v[3] = 1.f;
+		break;
 
-							elif(k == ord("p")) :
-							if (frame_pause == 0) :
-								frame_pause = 1
-								print("pause. (p)")
-							else :
-								frame_pause = 0
-#endif
-								return 0;
+		// シーン制御
+	case('p'):
+		frame_pause = !frame_pause;
+		if (frame_pause)
+		{
+			std::cout << "pause. (p)" << std::endl;
+		}
+
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
+
 
 void draw_info()
 {
@@ -304,38 +350,47 @@ void draw_info()
 #endif
 }
 
-#if 0
-int mouse_event(event, x, y, flags, param)
+static void 
+mouse_event(int event, int x, int y, int flags, void* param)
 {
-	// 左クリックで赤い円形を生成
-	if event == cv2.EVENT_LBUTTONUP:
-	cv2.circle(img, (x, y), 50, (0, 0, 255), -1)
+	// イベントテスト
+	{
+		// 左クリックで赤い円形を生成
+		if (event == cv::EVENT_LBUTTONUP)
+		{
+			painter.circle(jhl_xy_i(x, y), 50, jhl_rgb(0, 0, 255));
+		}
+
 		// 右クリック + Shiftキーで緑色のテキストを生成
-		elif event == cv2.EVENT_RBUTTONUP and flags & cv2.EVENT_FLAG_SHIFTKEY :
-		cv2.putText(img, "CLICK!!", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 3, cv2.CV_AA)
+		else if (event == cv::EVENT_RBUTTONUP && (flags & cv::EVENT_FLAG_SHIFTKEY))
+		{
+			painter.putText("CLICK!!", jhl_xy_i(x, y),
+				/*cv2.FONT_HERSHEY_SIMPLEX, 5,*/
+				jhl_rgb(0, 255, 0)/*, 3, cv2.CV_AA*/);
+		}
 
 		// 右クリックのみで青い四角形を生成
-		elif event == cv2.EVENT_RBUTTONUP :
-		cv2.rectangle(img, (x - 100, y - 100), (x + 100, y + 100), (255, 0, 0), -1)
+		else if (event == cv::EVENT_RBUTTONUP)
+		{
+			painter.rectangle(jhl_xy_i(x - 100, y - 100), jhl_xy_i(x + 100, y + 100), jhl_rgb(255, 0, 0), -1);
+		}
+	}
 
-		print("mouse event")
-
-		if event == cv2.EVENT_LBUTTONUP:
-	if (x > window_h / 2) :
-		if (y > window_v / 2) :
-			param1 += 1.
-		else :
-			param1 -= 1.
-	else:
-	if (y > window_v / 2) :
-		param2 += 1.
-	else :
-		param2 -= 1.
-
-		print(x, y, param1, param2)
-		print("mouse event")
-}
-
-
+#if 0
+//	print("mouse event")
+	if( event == cv::EVENT_LBUTTONUP )
+	{
+		if (x > window_h / 2)
+		{
+			param1 += (y > window_v / 2) ? 1 : -1;
+		}
+		else
+		{
+			param2 += (y > window_v / 2) ? 1 : -1;
+		}
+		print(x, y, param1, param2):
+		print("mouse event"):
+	}
 #endif
+}
 

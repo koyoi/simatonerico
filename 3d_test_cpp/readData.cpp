@@ -6,7 +6,7 @@
 #include <fstream>   // ifstream, ofstream
 
 #include "basic3dCalc.h"
-
+#include "jhl3dLib.h"
 
 
 int read_data(modelData& model, std::string filename)

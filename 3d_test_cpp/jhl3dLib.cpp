@@ -1,39 +1,415 @@
 #include "stdafx.h"
 
-#include "basic3dCalc.h"
+#include "jhl3dLib.h"
+#include "jhl3Dlib.h"
 #include "readData.h"
 
-#if 0
-int drawLines(draw_type, im, points, polygons)
+//-----------------------------------------------------------
+
+En_draw_type	jhl3Dlib::draw_type = drawType_flat;
+modelData*	jhl3Dlib::tgtMdl;
+jhl_rgb		jhl3Dlib::light_ambient;
+dir_light	jhl3Dlib::light_directional[2];
+
+
+
+//-----------------------------------------------------------
+
+// 表裏判定
+float jhl3Dlib::check_side(int pol_idx)
 {
+	// ポリゴンの頂点 p0,1,2 の作る面ベクトル v1=p1-p0, v2=p2-p0 の法線ベクトルが、視線(＝カメラ変換後なので、[0,0,-1]) と向き合うか？
+	// 最適化済み結果
+	pol_def	pol = tgtMdl->poldef[pol_idx];
+	jhl_xyz p[3];
 
-	points_disp = trans_disp(points)  // ディスプレイ座標へ
-	//        print("viewport points")
-	//        print(points_disp)
+	p[0] = tgtMdl->vert[pol.a];
+	p[1] = tgtMdl->vert[pol.b];
+	p[2] = tgtMdl->vert[pol.c];
+	return(-((p[1].x - p[0].x)*(p[2].y - p[0].y) - (p[0].x - p[2].x)*(p[1].y - p[0].y)));
+}
 
+
+
+// あたる光の色を計算
+// 引数は各頂点の座標
+// 環境光＋平行光(面との内積を取る)。返値と、面の色を掛けて
+jhl_rgb jhl3Dlib::calc_lighting(int pol_idx)
+{
+	pol_def	pol = tgtMdl->poldef[pol_idx];
+	jhl_xyz p[3];
+
+	jhl_rgb rv = light_ambient;
+
+	jhl_xyz v1 = p[1] - p[0];
+	jhl_xyz v2 = p[2] - p[0];
+	jhl_xyz n = v1*v2;	// ベクトル積
+	n /= n.norm();
+
+	for (int i = 0; i < 2; i++)
+	{
+		float e = -n.dot(light_directional[i].dir);
+		if (e > 0)
+		{
+			//        print(" add light ", 1.*e*l[1])
+			rv += light_directional[i].col * e;
+		}
+	}
+	return (rv);
+}
+
+
+// ビューマトリクス生成
+// t : 視線方向の逆ベクトル
+// r : 視線をｚ方向としたときの、x方向に当たるベクトル
+// s : 同、y方向
+void jhl3Dlib::set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc)
+{
+	jhl_xyz t, r, s;
+
+	t = eye_loc - tgt_loc;
+	r = u_vec * t;
+	s = t * r;
+
+	view_mat = matHomo4(r / r.norm(), s / s.norm(), t / t.norm(), -eye_loc);
+}
+
+
+// ディスプレイ座標へ変換
+void jhl3Dlib::set_disp_trans(const jhl_xy_i& window)
+{
+	disp_mat = matHomo4();
+	disp_mat.m[0 * 4 + 0] = (float)window.x / 2;
+	disp_mat.m[1 * 4 + 1] = (float)window.y / 2;
+	disp_mat.m[0 * 4 + 3] = (float)window.x / 2;
+	disp_mat.m[1 * 4 + 3] = (float)window.y / 2;
+	disp_mat.m[2 * 4 + 2] = 1.0f;
+	disp_mat.m[3 * 4 + 3] = 1.0f;
+}
+
+#if 0
+set_disp_trans(const jhl_xy_i& window);　のため、廃止予定
+matHomo4 jhl3Dlib::disp_trans(const jhl_xy_i& window)
+{
+	matHomo4 m;
+	m.m[0 * 4 + 0] = (float)window.x / 2;
+	m.m[1 * 4 + 1] = (float)window.y / 2;
+	m.m[0 * 4 + 3] = (float)window.x / 2;
+	m.m[1 * 4 + 3] = (float)window.y / 2;
+	m.m[2 * 4 + 2] = 1.0f;
+	m.m[3 * 4 + 3] = 1.0f;
+	return m;
+}
+
+matHomo4 jhl3Dlib::disp_trans_inv(matHomo4& mat_disp_trans)
+{
+	matHomo4 m;
+	m.m[0 * 4 + 0] = 1 / (mat_disp_trans.m[0 * 4 + 0]);
+	m.m[1 * 4 + 1] = 1 / (mat_disp_trans.m[1 * 4 + 1]);
+	m.m[2 * 4 + 2] = 1;
+	m.m[3 * 4 + 3] = 1;
+	m.m[0 * 4 + 3] = -1;
+	m.m[1 * 4 + 3] = -1;
+	return m;
+}
+#endif
+
+#if 1	// 上下左右対称バージョン
+void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
+{
+	vp = m_;
+	matHomo4_full mp;
+
+	int	rl, tb, fn;
+
+	rl = vp.right - vp.left;
+	tb = vp.top - vp.btm;
+	fn = vp.far - vp.near;
+	mp.m[0 * 4 + 0] = (float)2 * vp.near / rl;
+	mp.m[1 * 4 + 1] = (float)2 * vp.near / tb;
+	mp.m[0 * 4 + 2] = (float)0;	// (vp.right + vp.left) / rl;
+	mp.m[1 * 4 + 2] = (float)0; // (vp.top + vp.btm) / tb;
+	mp.m[2 * 4 + 2] = (float)-(vp.far + vp.near) / fn;
+	mp.m[3 * 4 + 2] = (float)-1;
+	mp.m[2 * 4 + 3] = (float)-2 * vp.far * vp.near / fn;
+	mp.m[3 * 4 + 3] = (float)0;
+	proj_mat = mp;
+}
+
+
+void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
+{
+	vp = m_;
+	matHomo4_full mp;
+
+	int	rl, tb, fn;
+
+	rl = vp.right - vp.left;
+	tb = vp.top - vp.btm;
+	fn = vp.far - vp.near;
+	mp.m[0 * 4 + 0] = (float)2 / rl;
+	mp.m[1 * 4 + 1] = (float)2 / tb;
+	mp.m[2 * 4 + 2] = (float)-2 / fn;
+	mp.m[0 * 4 + 3] = (float)0;	// -(vp.right + vp.left) / rl;
+	mp.m[1 * 4 + 3] = (float)0;	// -(vp.top + vp.btm) / tb;
+	mp.m[2 * 4 + 3] = (float)-(vp.far + vp.near) / fn;
+
+	mp.m[3 * 4 + 3] = 1;
+	proj_mat = mp;
+}
+#else
+void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
+{
+	vp = m_;
+	matHomo4_full mp;
+
+	int	rl, tb, fn;
+
+	rl = vp.right - vp.left;
+	tb = vp.top - vp.btm;
+	fn = vp.far - vp.near;
+	mp.m[0 * 4 + 0] = (float)2 * vp.near / rl;
+	mp.m[1 * 4 + 1] = (float)2 * vp.near / tb;
+	mp.m[0 * 4 + 2] = (float)(vp.right + vp.left) / rl;
+	mp.m[1 * 4 + 2] = (float)(vp.top + vp.btm) / tb;
+	mp.m[2 * 4 + 2] = (float)-(vp.far + vp.near) / fn;
+	mp.m[3 * 4 + 2] = (float)-1;
+	mp.m[2 * 4 + 3] = (float)-2 * vp.far * vp.near / fn;
+	mp.m[3 * 4 + 3] = (float)0;
+	proj_mat = mp;
+}
+
+
+void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
+{
+	vp = m_;
+	matHomo4_full mp;
+
+	int	rl, tb, fn;
+
+	rl = vp.right - vp.left;
+	tb = vp.top - vp.btm;
+	fn = vp.far - vp.near;
+	mp.m[0 * 4 + 0] = (float)2 / rl;
+	mp.m[1 * 4 + 1] = (float)2 / tb;
+	mp.m[2 * 4 + 2] = (float)-2 / fn;
+	mp.m[0 * 4 + 3] = (float)-(vp.right + vp.left) / rl;
+	mp.m[1 * 4 + 3] = (float)-(vp.top + vp.btm) / tb;
+	mp.m[2 * 4 + 3] = (float)-(vp.far + vp.near) / fn;
+
+	mp.m[3 * 4 + 3] = 1;
+	proj_mat = mp;
+}
+#endif
+
+
+
+// スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
+// todo １ライン一気版
+jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1)
+{
+	jhl_xyz rv;
+
+	rv.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
+	rv.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * rv.z;
+	rv.y = ((p0.y / p0.z) * (1 - wari) + (p1.y / p1.z) * wari) * rv.z;
+	return(rv);
+}
+
+
+#if 0
+
+
+// 透視深度（？）
+// Zやテクスチャ座標を計算するのに使う
+jhl_xyz jhl3Dlib::_toushi_shindo(points, far, near)
+{
+	//def pers_r(p, far, near) :
+	dest = []
+		for p in points :
+	x = -near / p[2] * p[0]
+		y = -near / p[2] * p[1]
+		z = -far*near / p[2] - (far + near) / 2
+		z = z*(-2 / (far - near))
+		dest.append((x, y, z))
+		return dest
+}
+
+
+// ポイントに透視変換までの変換を適用
+void jhl3Dlib::trans_vec(points, w) {
+	dest = []
+		for v in points :
+	temp = v[:]     // deep copy
+		temp.append(1.)
+		temp_w = np.ravel(w.dot(temp))
+		if (temp_w[3] != 0) :
+			x = temp_w[0] / temp_w[3]
+			y = temp_w[1] / temp_w[3]
+			z = temp_w[2] / temp_w[3]
+			dest.append((x, y, z))
+		else:
+	print("w == 0 !!!")
+		return dest
+}
+
+
+
+
+// 透視変換後のを入れて、ディスプレイ座標へ変換
+void  	jhl3Dlib::trans_disp(points)
+{
+	temp = np.matrix([0., 0, 0, 0])
+		dest = []
+		for p in points :
+	temp[0, 0:3] = p[0:3]
+		temp[0, 3] = 1
+		dest.append(((viewport_trans.dot(temp.T)).T).tolist()[0])   // イヤ実装
+		return dest
+}
+
+#endif
+
+
+void modelData::dataDump(modelData& mdl)
+{
+	using namespace std;
+	{
+		cout << "vertex : " << mdl.n_vert << endl;
+		jhl_xyz* t = new jhl_xyz[mdl.n_vert];
+		t = mdl.vert;							// todo orz
+		for (int i = 0; i < mdl.n_vert; i++)
+		{
+			cout << i << ": ( " << t[i].x << ", " << t[i].y << ", " << t[i].z << " )" << endl;
+		}
+		delete t;
+	}
+
+	{
+		cout << "polygon : " << mdl.n_pol << endl;
+		pol_def* t = new pol_def[mdl.n_pol];
+		t = mdl.poldef;
+
+		for (int i = 0; i < mdl.n_pol; i++)
+		{
+			cout << i << " : ( " << t[i].a << ", " << t[i].b << ", " << t[i].c << " )" << endl;
+		}
+	}
+
+	{
+		cout << "attributes : " << endl;
+		for (int i = 0; i < mdl.n_group; i++)
+		{
+			grpAttrib t = mdl.attr[i];
+
+			cout << " member : ";
+			for (int j = 0; j < t.n_member; j++)
+			{
+				cout << t.member[j] << " ,";
+			}
+			cout << endl;
+
+			if (t.pTex == 0)
+			{
+				cout << " no texture" << endl;
+			}
+			else
+			{
+				// todo to be written
+				//	char*	texName;
+				// char*	pTex;
+				// texUv*	uv;
+			}
+
+			cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
+		}
+	}
+}
+
+
+
+/*
+t_work = t.dot(t_work)       // モデルの回転、拡大縮小(、・移動)行列の更新
+
+temp = r.dot(t_work)         // モデルの移動
+temp = eye_vec.dot(temp)     // 視点の指定
+temp = area.dot(temp)        // 投影変換       // todo z が正規化範囲から出てしまう？？　
+//    print("mat: obj trans")
+//    print(temp)
+//    print("vec: model points")
+//    print(points)
+poi_trans = trans_vec(points, temp) //諸々の変換をモデルに施す
+//    print("transed points")
+//   for v in pols :
+//       print(v)
+*/
+
+
+
+int jhl3Dlib::drawLines(polMdl & mdl)
+{
+	//// 使う度に変換してもいい気がする
+	/*
+	points_disp = trans_disp(points);  // ディスプレイ座標へ
+									   //        print("viewport points")
+									   //        print(points_disp)
+	*/
+
+	tgtMdl = &mdl.model;
+
+	jhl_xyz	t_vert[3];
+	jhl_xyz	t_vert_disp[3]; 
+	static matHomo4		view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
+
+	static matHomo4_full		proj_mat;	//	投影変換
+//	matHomo4_full transMat = disp_mat * proj_mat * view_mat * mdl.model_mat;
+	matHomo4 transMat = disp_mat * proj_mat * view_mat * mdl.model_mat;
+
+	switch ( jhl3Dlib::draw_type )
+	{
+	case drawType_vertex:
+		for (int i = 0; i < mdl.model.n_vert; i++)
+		{
+			t_vert[0] = mdl.model.vert[i];
+			t_vert_disp[0] = mdl.model_mat * t_vert[0];
+		}
+		points_disp = trans_disp(points);  // ディスプレイ座標へ
+
+		break;
+	case drawType_line:
+		break;
+	case drawType_line_front_face:
+		break;
+	case drawType_flat:
+		break;
+	default:
+		break;
+	}
+
+#if 0
 		if (draw_type == 1) : // ワイヤフレーム（影面消去なし)
 			for vecs in points_disp :
 	t.append(tuple(map(int, vecs[0:2]))) // cv2.line が整数しか受け付けない
 		for d in polygons :
-	im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width)
-		im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width)
-		im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width)
+	im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width);
+	im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width);
+	im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width);
 
-		elif(draw_type == 2) : // ワイヤフレーム、影面消去あり
-		pols_drawn = 0
+	elif(draw_type == 2) : // ワイヤフレーム、影面消去あり
+		pols_drawn = 0;
 		for vecs in points_disp :
 	t.append(tuple(map(int, vecs[0:2]))) // cv2.line が整数しか受け付けない
 		for d in polygons :
 	if (check_side((points_disp[d[0]], points_disp[d[1]], points_disp[d[2]])) > 0) :
 		//                print(line_color)
 		//                print(t[d[0]], t[d[1]], t[d[2]])
-		im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width)
-		im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width)
-		im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width)
-		pols_drawn += 1
-		print("polygons drawn: ", pols_drawn)
+		im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width);
+	im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width);
+	im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width);
+	pols_drawn += 1;
+	print("polygons drawn: ", pols_drawn);
 
-		elif(draw_type == 3) : // 単色ポリゴン（光源あり）
+		elif(draw_type == 3) : // 単色ポリゴン（光源あり）;
 		z_min = 255
 		z_max = 0
 		z_calc = 0
@@ -187,7 +563,8 @@ int drawLines(draw_type, im, points, polygons)
 		print("z_min,max", z_min, z_max)
 		//        print("// z calc", z_calc)
 							else:
-	draw_type = 1
+#endif
+
 #if 0
 		elif(draw_type == 0) :
 		x = 0
@@ -196,4 +573,25 @@ int drawLines(draw_type, im, points, polygons)
 #endif
 }
 
-#endif
+
+En_draw_type jhl3Dlib::draw_type_next()
+{
+	switch (draw_type)
+	{
+	case(drawType_vertex):
+		draw_type = drawType_line;
+		break;
+	case(drawType_line):
+		draw_type = drawType_line_front_face;
+		break;
+	case(drawType_line_front_face):
+		draw_type = drawType_flat;
+		break;
+	case(drawType_flat):
+		draw_type = drawType_vertex;
+		break;
+	default:
+		draw_type = drawType_flat;
+		break;
+	};
+}
