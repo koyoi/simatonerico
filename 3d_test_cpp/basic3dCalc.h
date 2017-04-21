@@ -7,6 +7,30 @@
 // http://www.hiramine.com/programming/c_cpp/operator.html
 
 
+// 座標
+struct jhl_xy {
+	float x;
+	float y;
+};
+
+class jhl_xy_i {
+public:
+	unsigned int x;
+	unsigned int y;
+
+public:
+	jhl_xy_i() {};
+	jhl_xy_i(int x_, int y_) :x(x_), y(y_) {};
+	jhl_xy_i operator/(int div) const {
+		jhl_xy_i t;
+		t.x = x / div;
+		t.y = y / div;
+		return t;
+	}
+};
+
+
+
 class jhl_xyz {
 public:
 	float x;	// 座標
@@ -110,6 +134,13 @@ public:
 		return t;
 	}
 
+	operator jhl_xy_i() {
+		jhl_xy_i t;
+		t.x = (int)x;
+		t.y = (int)y;
+		return t;
+	}
+
 	friend std::ostream& operator<< (std::ostream& os, const jhl_xyz& p)
 	{
 		os << std::endl;
@@ -176,28 +207,14 @@ struct texUv{
 };
 
 
-// 座標
-struct jhl_xy {
-	float x;	
-	float y;
-};
-
-class jhl_xy_i {
-public:
-	unsigned int x;
-	unsigned int y;
-
-public:
-	jhl_xy_i(){};
-	jhl_xy_i(int x_, int y_) :x(x_), y(y_) {};
-
-};
-
-
 class mat33 {
 public:
 	float m[3*3];
 };
+
+
+class matHomo4_full;
+class matHomo4;
 
 // 3Dグラフィックスで使わない成分を省略した省メモリ・高速版（？）
 class matHomo4 {
@@ -213,23 +230,30 @@ public:
 		v{ 0, 0, 0, (float)i }	// ident() の方が早いかもね
 	{};
 	matHomo4(float a, float b, float c)
-		:v{ a, b, c, 1 }
+		:v{ a, b, c, 1 },
+		m{ (float)1, 0, 0,
+		0, (float)1, 0,
+		0, 0, (float)1 }
 	{};
 	matHomo4(jhl_xyz pos)
-		:v{ pos.x, pos.y, pos.z, 1 }
+		:v{ pos.x, pos.y, pos.z, 1 },
+		m{ (float)1, 0, 0,
+		0, (float)1, 0,
+		0, 0, (float)1 }
 	{};
 	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c)	// ３つの縦ベクトルから作る
 		:m{
 		a.x, b.x, c.x,
 		a.y, b.y, c.y,
-		a.z, b.z, c.z}
+		a.z, b.z, c.z},
+		v{0}
 	{};
 	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c, jhl_xyz d)	// 4つの縦ベクトルから作る
 		:m{
 		a.x, b.x, c.x,
 		a.y, b.y, c.y,
 		a.z, b.z, c.z },
-		v{ d.x, d.y, d.z, 0 }
+		v{ d.x, d.y, d.z, 1.f }
 	{};
 
 
@@ -362,8 +386,8 @@ public:
 		*this = t;
 		return *this;
 	}
-
-	operator matHomo4_full() const noexcept {
+#if 0
+	operator matHomo4_full() const {	// キャスト演算子
 		/*
 		//m3:matrix([m_0,m_1,m_2,v_0],[m_3,m_4,m_5,v_1],[m_6,m_7,m_8,v_2],[0,0,0,v_3]);
 		//m4:matrix([rhs_m0,rhs_m1,rhs_m2,rhs_v0],[rhs_m3,rhs_m4,rhs_m5,rhs_v1],[rhs_m6,rhs_m7,rhs_m8,rhs_v2],[0,0,0,rhs_v3]);
@@ -405,6 +429,7 @@ public:
 		t.m[14] = 0;
 		return t;
 	}
+#endif
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4& p)
 	{
@@ -429,49 +454,59 @@ public:
 class matHomo4_full {
 public:
 	float m[4 * 4];
+	matHomo4_full() :
+		m{ 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 }
+	{}
 
 	// 外積
 	matHomo4_full operator*(matHomo4 rhs) const {
 		matHomo4_full t;
-		t.m[0] = m[2] * rhs.m[8] + m[1] * rhs.m[4] + m[3] * rhs.m[12] + m[0] * rhs.m[0];
-		t.m[1] = m[2] * rhs.m[9] + m[1] * rhs.m[5] + m[3] * rhs.m[13] + m[0] * rhs.m[1];
-		t.m[2] = m[1] * rhs.m[6] + m[0] * rhs.m[2] + m[3] * rhs.m[14] + m[2] * rhs.m[10];
-		t.m[3] = m[1] * rhs.m[7] + m[0] * rhs.m[3] + m[3] * rhs.m[15] + m[2] * rhs.m[11];
-		t.m[4] = m[6] * rhs.m[8] + m[5] * rhs.m[4] + m[7] * rhs.m[12] + m[4] * rhs.m[0];
-		t.m[5] = m[6] * rhs.m[9] + m[5] * rhs.m[5] + m[7] * rhs.m[13] + m[4] * rhs.m[1];
-		t.m[6] = m[5] * rhs.m[6] + m[4] * rhs.m[2] + m[7] * rhs.m[14] + m[6] * rhs.m[10];
-		t.m[7] = m[5] * rhs.m[7] + m[4] * rhs.m[3] + m[7] * rhs.m[15] + m[6] * rhs.m[11];
-		t.m[8] = m[10] * rhs.m[8] + m[9] * rhs.m[4] + m[11] * rhs.m[12] + m[8] * rhs.m[0];
-		t.m[9] = m[10] * rhs.m[9] + m[9] * rhs.m[5] + m[11] * rhs.m[13] + m[8] * rhs.m[1];
-		t.m[10] = m[9] * rhs.m[6] + m[8] * rhs.m[2] + m[11] * rhs.m[14] + m[10] * rhs.m[10];
-		t.m[11] = m[9] * rhs.m[7] + m[8] * rhs.m[3] + m[11] * rhs.m[15] + m[10] * rhs.m[11];
-		t.m[12] = m[14] * rhs.m[8] + m[13] * rhs.m[4] + m[15] * rhs.m[12] + m[12] * rhs.m[0];
-		t.m[13] = m[14] * rhs.m[9] + m[13] * rhs.m[5] + m[15] * rhs.m[13] + m[12] * rhs.m[1];
-		t.m[14] = m[13] * rhs.m[6] + m[12] * rhs.m[2] + m[15] * rhs.m[14] + m[14] * rhs.m[10];
-		t.m[15] = m[13] * rhs.m[7] + m[12] * rhs.m[3] + m[15] * rhs.m[15] + m[14] * rhs.m[11];
+		t.m[0] = m[2] * rhs.m[6] + m[1] * rhs.m[3] + m[0] * rhs.m[0];
+		t.m[1] = m[2] * rhs.m[7] + m[1] * rhs.m[4] + m[0] * rhs.m[1];
+		t.m[2] = m[2] * rhs.m[8] + m[1] * rhs.m[5] + m[0] * rhs.m[2];
+		t.m[3] = m[3] * rhs.v[3] + m[2] * rhs.v[2] + m[1] * rhs.v[1] + m[0] * rhs.v[0];
+		t.m[4] = m[6] * rhs.m[6] + m[5] * rhs.m[3] + m[4] * rhs.m[0];
+		t.m[5] = m[6] * rhs.m[7] + m[5] * rhs.m[4] + m[4] * rhs.m[1];
+		t.m[6] = m[6] * rhs.m[8] + m[5] * rhs.m[5] + m[4] * rhs.m[2];
+		t.m[7] = m[7] * rhs.v[3] + m[6] * rhs.v[2] + m[5] * rhs.v[1] + m[4] * rhs.v[0];
+		t.m[8] = m[10] * rhs.m[6] + m[9] * rhs.m[3] + m[8] * rhs.m[0];
+		t.m[9] = m[10] * rhs.m[7] + m[9] * rhs.m[4] + m[8] * rhs.m[1];
+		t.m[10] = m[10] * rhs.m[8] + m[9] * rhs.m[5] + m[8] * rhs.m[2];
+		t.m[11] = m[11] * rhs.v[3] + m[10] * rhs.v[2] + m[9] * rhs.v[1] + m[8] * rhs.v[0];
+		t.m[12] = m[14] * rhs.m[6] + m[13] * rhs.m[3] + m[12] * rhs.m[0];
+		t.m[13] = m[14] * rhs.m[7] + m[13] * rhs.m[4] + m[12] * rhs.m[1];
+		t.m[14] = m[14] * rhs.m[8] + m[13] * rhs.m[5] + m[12] * rhs.m[2];
+		t.m[15] = m[15] * rhs.v[3] + m[14] * rhs.v[2] + m[13] * rhs.v[1] + m[12] * rhs.v[0];
 		return t;
 	}
 
 	matHomo4_full& operator*=(matHomo4 rhs) {
 		matHomo4_full t;
-		t.m[ 0] = m[ 2] * rhs.m[ 8] + m[ 1] * rhs.m[ 4] + m[ 3] * rhs.m[12] + m[ 0] * rhs.m[ 0];
-		t.m[ 1] = m[ 2] * rhs.m[ 9] + m[ 1] * rhs.m[ 5] + m[ 3] * rhs.m[13] + m[ 0] * rhs.m[ 1];
-		t.m[ 2] = m[ 1] * rhs.m[ 6] + m[ 0] * rhs.m[ 2] + m[ 3] * rhs.m[14] + m[ 2] * rhs.m[10];
-		t.m[ 3] = m[ 1] * rhs.m[ 7] + m[ 0] * rhs.m[ 3] + m[ 3] * rhs.m[15] + m[ 2] * rhs.m[11];
-		t.m[ 4] = m[ 6] * rhs.m[ 8] + m[ 5] * rhs.m[ 4] + m[ 7] * rhs.m[12] + m[ 4] * rhs.m[ 0];
-		t.m[ 5] = m[ 6] * rhs.m[ 9] + m[ 5] * rhs.m[ 5] + m[ 7] * rhs.m[13] + m[ 4] * rhs.m[ 1];
-		t.m[ 6] = m[ 5] * rhs.m[ 6] + m[ 4] * rhs.m[ 2] + m[ 7] * rhs.m[14] + m[ 6] * rhs.m[10];
-		t.m[ 7] = m[ 5] * rhs.m[ 7] + m[ 4] * rhs.m[ 3] + m[ 7] * rhs.m[15] + m[ 6] * rhs.m[11];
-		t.m[ 8] = m[10] * rhs.m[ 8] + m[ 9] * rhs.m[ 4] + m[11] * rhs.m[12] + m[ 8] * rhs.m[ 0];
-		t.m[ 9] = m[10] * rhs.m[ 9] + m[ 9] * rhs.m[ 5] + m[11] * rhs.m[13] + m[ 8] * rhs.m[ 1];
-		t.m[10] = m[ 9] * rhs.m[ 6] + m[ 8] * rhs.m[ 2] + m[11] * rhs.m[14] + m[10] * rhs.m[10];
-		t.m[11] = m[ 9] * rhs.m[ 7] + m[ 8] * rhs.m[ 3] + m[11] * rhs.m[15] + m[10] * rhs.m[11];
-		t.m[12] = m[14] * rhs.m[ 8] + m[13] * rhs.m[ 4] + m[15] * rhs.m[12] + m[12] * rhs.m[ 0];
-		t.m[13] = m[14] * rhs.m[ 9] + m[13] * rhs.m[ 5] + m[15] * rhs.m[13] + m[12] * rhs.m[ 1];
-		t.m[14] = m[13] * rhs.m[ 6] + m[12] * rhs.m[ 2] + m[15] * rhs.m[14] + m[14] * rhs.m[10];
-		t.m[15] = m[13] * rhs.m[ 7] + m[12] * rhs.m[ 3] + m[15] * rhs.m[15] + m[14] * rhs.m[11];
+		t.m[0] = m[2] * rhs.m[6] + m[1] * rhs.m[3] + m[0] * rhs.m[0];
+		t.m[1] = m[2] * rhs.m[7] + m[1] * rhs.m[4] + m[0] * rhs.m[1];
+		t.m[2] = m[2] * rhs.m[8] + m[1] * rhs.m[5] + m[0] * rhs.m[2];
+		t.m[3] = m[3] * rhs.v[3] + m[2] * rhs.v[2] + m[1] * rhs.v[1] + m[0] * rhs.v[0];
+		t.m[4] = m[6] * rhs.m[6] + m[5] * rhs.m[3] + m[4] * rhs.m[0];
+		t.m[5] = m[6] * rhs.m[7] + m[5] * rhs.m[4] + m[4] * rhs.m[1];
+		t.m[6] = m[6] * rhs.m[8] + m[5] * rhs.m[5] + m[4] * rhs.m[2];
+		t.m[7] = m[7] * rhs.v[3] + m[6] * rhs.v[2] + m[5] * rhs.v[1] + m[4] * rhs.v[0];
+		t.m[8] = m[10] * rhs.m[6] + m[9] * rhs.m[3] + m[8] * rhs.m[0];
+		t.m[9] = m[10] * rhs.m[7] + m[9] * rhs.m[4] + m[8] * rhs.m[1];
+		t.m[10] = m[10] * rhs.m[8] + m[9] * rhs.m[5] + m[8] * rhs.m[2];
+		t.m[11] = m[11] * rhs.v[3] + m[10] * rhs.v[2] + m[9] * rhs.v[1] + m[8] * rhs.v[0];
+		t.m[12] = m[14] * rhs.m[6] + m[13] * rhs.m[3] + m[12] * rhs.m[0];
+		t.m[13] = m[14] * rhs.m[7] + m[13] * rhs.m[4] + m[12] * rhs.m[1];
+		t.m[14] = m[14] * rhs.m[8] + m[13] * rhs.m[5] + m[12] * rhs.m[2];
+		t.m[15] = m[15] * rhs.v[3] + m[14] * rhs.v[2] + m[13] * rhs.v[1] + m[12] * rhs.v[0];
 		*this = t;
 		return *this;
+	}
+	operator jhl_xyz() {
+		jhl_xyz t;
+		t.x = m[0] / m[3];
+		t.y = m[1] / m[3];
+		t.z = m[2] / m[3];
+		return t;
 	}
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4_full& p)

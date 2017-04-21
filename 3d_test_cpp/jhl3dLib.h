@@ -2,8 +2,8 @@
 #include <cmath>
 
 #include "basic3dCalc.h"
-
-
+//#include "hal_graphics.h"
+#include "hal_gfx_ocv.h"
 
 
 struct viewport_config {
@@ -68,31 +68,37 @@ public:
 	static En_draw_type	draw_type;
 
 	static viewport_config	vp;
-	static matHomo4		view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
+	static matHomo4			view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
 
-	static matHomo4_full		proj_mat;	//	投影変換
+	static matHomo4_full	proj_mat;	//	投影変換
 
-	static matHomo4		disp_mat;	//	ディスプレイ変換
+	static matHomo4			disp_mat;	//	ディスプレイ変換
+	static jhl_xy_i			display;	
+
+	static matHomo4_full	transMat;
 
 	static jhl_rgb		light_ambient;
 	static dir_light	light_directional[2];
 
 private:
 	static modelData*	tgtMdl;
-
+	static disp_ocv2*	painter;
+//	static disp_base*	painter;		// アクセスできない基底クラスうんたら
 
 public:
+//	static void		set_painter(disp_base& p) { painter = &p; };
+	static void		set_painter(disp_ocv2& p) { painter = &p; };	
+	
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
-
 	static void		set_proj_mat_norm(viewport_config& m_);
 	static void		set_proj_mat_ortho(viewport_config& m_);
-
 	static void		set_disp_trans(const jhl_xy_i& window);
 	/*
 	↑のため、廃止予定
 	static matHomo4 disp_trans(const jhl_xy_i&  window);
 	static matHomo4 disp_trans_inv(matHomo4& mat_disp_trans);
 	*/
+	static void		setTransMat(matHomo4& mdl_mat);
 
 	static jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
 

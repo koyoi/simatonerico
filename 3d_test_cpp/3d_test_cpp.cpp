@@ -8,7 +8,14 @@
 #include "jhl3dLib.h"
 #include "readData.h"
 
-#include "hal_graphics.h"
+#ifdef _WIN32_
+#include "hal_gfx_ocv.h"
+//#include "windows.h"
+disp_ocv2	painter;
+
+#else	// ameba
+
+#endif
 
 
 jhl_xy_i window = { 640, 480 };
@@ -22,11 +29,6 @@ const std::string data_file[] = { "L:\\users\\mayura.kage7\\Documents\\My Dropbo
 #endif
 
 
-#ifdef _WIN32_
-//#define print	printf
-disp_ocv2	painter;
-
-#endif
 
 
 // ---------------------------------------------------
@@ -66,13 +68,13 @@ bool	frame_pause = false;
 
 
 
-
-
 int
 main(int argc, char *argv[])
 {
 	CvScalar font_color_info_defaut = CV_RGB( 0, 255, 255 );
 	unsigned long	frame_time = 300;	// [ms]
+
+	jhl3Dlib::set_painter(painter);
 
 	{
 		const int far = 40;
@@ -133,11 +135,11 @@ main(int argc, char *argv[])
 
 
 	// オブジェクトの位置
-	obj[0].trans = matHomo4(jhl_xyz (-2,0,0) );
-	obj[0].trans.rot_axis_x(0.2f);
-	obj[0].trans.rot_axis_y(0.3f);
-	obj[0].trans.rot_axis_z(0.4f);
-	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	obj[0].trans = matHomo4(jhl_xyz (-2,1,-3) );
+//	obj[0].trans.rot_axis_x(0.2f);
+//	obj[0].trans.rot_axis_y(0.3f);
+//	obj[0].trans.rot_axis_z(0.4f);
+//	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
 	obj[0].acc = matHomo4(1);
 	obj[0].acc.rot_axis_x(0.2f);
 	obj[0].acc.rot_axis_y(0.3f);
@@ -185,7 +187,7 @@ main(int argc, char *argv[])
 		k = cv::waitKey(1);
 		proc_key(k);
 		if (frame_pause) {
-			_sleep(100);
+// todo			_sleep(100);
 			continue;    // 次のループへ
 		}
 
@@ -209,15 +211,19 @@ main(int argc, char *argv[])
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
 			obj[i].trans *= obj[i].acc;
-			models[i].model_mat = obj[i].trans;
+			models[i].model_mat = obj[i].trans * obj[i].size;
 		}
 
 		int rv;
 		// 実際の描画
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
-			obj[i].trans += obj[i].acc;
-			models[0].model_mat = obj[i].trans * obj[i].size;
+			std::cout << "obj_trans mat" << std::endl;
+			std::cout << obj[i].trans << std::endl << std::endl;
+
+			std::cout << "obj size mat" << std::endl;
+			std::cout << obj[i].size << std::endl << std::endl;
+
 
 			// 局所的な変換（アニメーションやボーン変形）
 			rv = jhl3Dlib::drawLines(models[i]);
@@ -228,7 +234,7 @@ main(int argc, char *argv[])
 
 		painter.disp_swap();
 
-		_sleep(frame_time);
+// todo		_sleep(frame_time);
 		time_elapsed += 1;
 	}
 
