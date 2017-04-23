@@ -7,6 +7,7 @@
 // http://www.hiramine.com/programming/c_cpp/operator.html
 
 
+
 // 座標
 struct jhl_xy {
 	float x;
@@ -28,6 +29,7 @@ public:
 		return t;
 	}
 };
+
 
 
 
@@ -141,6 +143,17 @@ public:
 		return t;
 	}
 
+/*
+	operator matHomo1() {
+		matHomo1 t;
+		t.m[0] = x;
+		t.m[1] = y;
+		t.m[2] = z;
+		t.m[3] = 1;
+		return t;
+	}
+*/
+
 	friend std::ostream& operator<< (std::ostream& os, const jhl_xyz& p)
 	{
 		os << std::endl;
@@ -148,6 +161,33 @@ public:
 		return os;
 	};
 };
+
+
+class matHomo1 {
+public:
+	float m[4];
+	matHomo1()
+	{}
+
+	matHomo1(jhl_xyz t_)
+	{
+		m[0] = t_.x;
+		m[1] = t_.y;
+		m[2] = t_.z;
+		m[3] = 1.0f;
+	}
+
+
+	operator jhl_xyz() {
+		jhl_xyz t;
+		t.x = m[0] / m[3];
+		t.y = m[1] / m[3];
+		t.z = m[2] / m[3];
+		return t;
+	}
+};
+
+
 
 // 頂点へのインデックス
 // xxx using pol_def = int[3]	;	// うまくreadData() で扱えなくって... orz
@@ -501,6 +541,30 @@ public:
 		*this = t;
 		return *this;
 	}
+
+	matHomo1 operator*(matHomo1 rhs) const {
+		matHomo1 t;
+		t.m[0] = m[0] * rhs.m[0] + m[1] * rhs.m[1] + m[2] * rhs.m[2] + m[3] * rhs.m[3];
+		t.m[1] = m[4] * rhs.m[0] + m[5] * rhs.m[1] + m[6] * rhs.m[2] + m[7] * rhs.m[3];
+		t.m[2] = m[8] * rhs.m[0] + m[9] * rhs.m[1] + m[10] * rhs.m[2] + m[11] * rhs.m[3];
+		t.m[3] = m[12] * rhs.m[0] + m[13] * rhs.m[1] + m[14] * rhs.m[2] + m[15] * rhs.m[3];
+		return t;
+	}
+
+	jhl_xyz operator*(jhl_xyz rhs) const {
+		jhl_xyz rv;
+		float w;
+		matHomo1 t(rhs);
+
+		w = m[12] * t.m[0] + m[13] * t.m[1] + m[14] * t.m[2] + m[15] * t.m[3];
+
+		rv.x = (m[0] * t.m[0] + m[1] * t.m[1] + m[2] * t.m[2] + m[3] * t.m[3]) / w;
+		rv.y = (m[4] * t.m[0] + m[5] * t.m[1] + m[6] * t.m[2] + m[7] * t.m[3]) / w;
+		rv.z = (m[8] * t.m[0] + m[9] * t.m[1] + m[10] * t.m[2] + m[11] * t.m[3]) / w;
+		return rv;
+	}
+
+/*
 	operator jhl_xyz() {
 		jhl_xyz t;
 		t.x = m[0] / m[3];
@@ -508,6 +572,7 @@ public:
 		t.z = m[2] / m[3];
 		return t;
 	}
+	*/
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4_full& p)
 	{
@@ -527,12 +592,5 @@ public:
 		std::cout << "  " << m[ 8] << ", \t" << m[ 9] << ", \t" << m[10] << ", \t" << m[11] << std::endl;
 		std::cout << "  " << m[12] << ", \t" << m[13] << ", \t" << m[14] << ", \t" << m[15] << " ]" << std::endl;
 	}
-};
-
-
-// xxx using matHomo1 = float[4]; xxx
-class matHomo1 {
-public:
-	float m[4];
 };
 

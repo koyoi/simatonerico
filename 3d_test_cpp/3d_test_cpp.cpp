@@ -1,5 +1,10 @@
 #include "stdafx.h"
 
+#ifdef _WIN32_
+#include "windows.h"
+#endif
+
+
 #include <iostream>
 
 #include <opencv2/core/core.hpp>
@@ -10,7 +15,6 @@
 
 #ifdef _WIN32_
 #include "hal_gfx_ocv.h"
-//#include "windows.h"
 disp_ocv2	painter;
 
 #else	// ameba
@@ -77,13 +81,13 @@ main(int argc, char *argv[])
 	jhl3Dlib::set_painter(painter);
 
 	{
-		const int far = 40;
-		const int near = 5;
+		const int vp_far = 40;
+		const int vp_near = 5;
 		const int left = -5;
 		const int right = -left;
 		const int top = -left*(window.x / window.y);
 		const int btm = -top;
-		viewport_area = { far, near,  left, right, top, btm };
+		viewport_area = { vp_far, vp_near,  left, right, top, btm };
 	}
 	jhl3Dlib::set_proj_mat_norm(viewport_area);
 //	jhl3Dlib::set_proj_mat_ortho(viewport_area);
@@ -116,7 +120,7 @@ main(int argc, char *argv[])
 	}
 
 	// 初期設定
-	jhl_rgb line_color = jhl_rgb(210, 150, 130);
+	jhl_rgb aline_color = jhl_rgb(210, 150, 130);
 	int line_width = 1;
 
 	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f);
@@ -187,7 +191,7 @@ main(int argc, char *argv[])
 		k = cv::waitKey(1);
 		proc_key(k);
 		if (frame_pause) {
-// todo			_sleep(100);
+			Sleep(frame_time);
 			continue;    // 次のループへ
 		}
 
@@ -218,12 +222,13 @@ main(int argc, char *argv[])
 		// 実際の描画
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
+/*
 			std::cout << "obj_trans mat" << std::endl;
 			std::cout << obj[i].trans << std::endl << std::endl;
 
 			std::cout << "obj size mat" << std::endl;
 			std::cout << obj[i].size << std::endl << std::endl;
-
+			*/
 
 			// 局所的な変換（アニメーションやボーン変形）
 			rv = jhl3Dlib::drawLines(models[i]);
@@ -234,7 +239,7 @@ main(int argc, char *argv[])
 
 		painter.disp_swap();
 
-// todo		_sleep(frame_time);
+		Sleep(frame_time);
 		time_elapsed += 1;
 	}
 
@@ -274,27 +279,27 @@ int proc_key(char key)
 	switch (key)
 	{
 	case('g'):
-		viewport_area.far += 1;
+		viewport_area.vp_far += 1;
 		area_changed = 1;
 		break;
 	case('b'):
-		viewport_area.far -= 1;
-		if (viewport_area.far == viewport_area.near)
+		viewport_area.vp_far -= 1;
+		if (viewport_area.vp_far == viewport_area.vp_near)
 		{
-			viewport_area.far += 1;
+			viewport_area.vp_far += 1;
 		}
 		area_changed = 1;
 		break;
 	case('f'):
-		viewport_area.near += 1;
-		if (viewport_area.far == viewport_area.near)
+		viewport_area.vp_near += 1;
+		if (viewport_area.vp_far == viewport_area.vp_near)
 		{
-			viewport_area.near -= 1;
+			viewport_area.vp_near -= 1;
 		}
 		area_changed = 1;
 		break;
 	case('v'):
-		viewport_area.near -= 1;
+		viewport_area.vp_near -= 1;
 		area_changed = 1;
 		break;
 
@@ -349,9 +354,9 @@ void draw_info()
 		cv2.putText(img, text, (0, 12), font, font_size, font_color_info_defaut)
 		text = str(time_elapsed)
 		cv2.putText(img, text, (0, 24), font, font_size, font_color_info_defaut)
-		text = "near(f/v) : " + str(area_near)
+		text = "vp_near(f/v) : " + str(area_near)
 		cv2.putText(img, text, (0, 36), font, font_size, font_color_info_defaut)
-		text = "far (g/b) : " + str(area_far)
+		text = "vp_far (g/b) : " + str(area_far)
 		cv2.putText(img, text, (0, 48), font, font_size, font_color_info_defaut)
 #endif
 }

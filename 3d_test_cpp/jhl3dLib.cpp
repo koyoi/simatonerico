@@ -141,14 +141,14 @@ void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
 
 	rl = vp.right - vp.left;
 	tb = vp.top - vp.btm;
-	fn = vp.far - vp.near;
-	mp.m[0 * 4 + 0] = (float)2 * vp.near / rl;
-	mp.m[1 * 4 + 1] = (float)2 * vp.near / tb;
+	fn = vp.vp_far - vp.vp_near;
+	mp.m[0 * 4 + 0] = (float)2 * vp.vp_near / rl;
+	mp.m[1 * 4 + 1] = (float)2 * vp.vp_near / tb;
 	mp.m[0 * 4 + 2] = (float)0;	// (vp.right + vp.left) / rl;
 	mp.m[1 * 4 + 2] = (float)0; // (vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 2] = (float)-(vp.far + vp.near) / fn;
+	mp.m[2 * 4 + 2] = (float)-(vp.vp_far + vp.vp_near) / fn;
 	mp.m[3 * 4 + 2] = (float)-1;
-	mp.m[2 * 4 + 3] = (float)-2 * vp.far * vp.near / fn;
+	mp.m[2 * 4 + 3] = (float)-2 * vp.vp_far * vp.vp_near / fn;
 	mp.m[3 * 4 + 3] = (float)0;
 	proj_mat = mp;
 }
@@ -163,13 +163,13 @@ void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
 
 	rl = vp.right - vp.left;
 	tb = vp.top - vp.btm;
-	fn = vp.far - vp.near;
+	fn = vp.vp_far - vp.vp_near;
 	mp.m[0 * 4 + 0] = (float)2 / rl;
 	mp.m[1 * 4 + 1] = (float)2 / tb;
 	mp.m[2 * 4 + 2] = (float)-2 / fn;
 	mp.m[0 * 4 + 3] = (float)0;	// -(vp.right + vp.left) / rl;
 	mp.m[1 * 4 + 3] = (float)0;	// -(vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 3] = (float)-(vp.far + vp.near) / fn;
+	mp.m[2 * 4 + 3] = (float)-(vp.vp_far + vp.vp_near) / fn;
 
 	mp.m[3 * 4 + 3] = 1;
 	proj_mat = mp;
@@ -184,14 +184,14 @@ void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
 
 	rl = vp.right - vp.left;
 	tb = vp.top - vp.btm;
-	fn = vp.far - vp.near;
-	mp.m[0 * 4 + 0] = (float)2 * vp.near / rl;
-	mp.m[1 * 4 + 1] = (float)2 * vp.near / tb;
+	fn = vp.vp_far - vp.vp_near;
+	mp.m[0 * 4 + 0] = (float)2 * vp.vp_near / rl;
+	mp.m[1 * 4 + 1] = (float)2 * vp.vp_near / tb;
 	mp.m[0 * 4 + 2] = (float)(vp.right + vp.left) / rl;
 	mp.m[1 * 4 + 2] = (float)(vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 2] = (float)-(vp.far + vp.near) / fn;
+	mp.m[2 * 4 + 2] = (float)-(vp.vp_far + vp.vp_near) / fn;
 	mp.m[3 * 4 + 2] = (float)-1;
-	mp.m[2 * 4 + 3] = (float)-2 * vp.far * vp.near / fn;
+	mp.m[2 * 4 + 3] = (float)-2 * vp.vp_far * vp.vp_near / fn;
 	mp.m[3 * 4 + 3] = (float)0;
 	proj_mat = mp;
 }
@@ -206,13 +206,13 @@ void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
 
 	rl = vp.right - vp.left;
 	tb = vp.top - vp.btm;
-	fn = vp.far - vp.near;
+	fn = vp.vp_far - vp.vp_near;
 	mp.m[0 * 4 + 0] = (float)2 / rl;
 	mp.m[1 * 4 + 1] = (float)2 / tb;
 	mp.m[2 * 4 + 2] = (float)-2 / fn;
 	mp.m[0 * 4 + 3] = (float)-(vp.right + vp.left) / rl;
 	mp.m[1 * 4 + 3] = (float)-(vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 3] = (float)-(vp.far + vp.near) / fn;
+	mp.m[2 * 4 + 3] = (float)-(vp.vp_far + vp.vp_near) / fn;
 
 	mp.m[3 * 4 + 3] = 1;
 	proj_mat = mp;
@@ -250,7 +250,7 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 	m_proj_disp.m[1 * 4 + 3] = m_proj_disp.m[3 * 4 + 3] * display.y;
 
 	transMat = m_proj_disp * m_model_view;	// todo 書き下す
-
+/*
 	std::cout << "model mat" << std::endl;
 	std::cout << mdl_mat << std::endl << std::endl;
 
@@ -268,7 +268,7 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 
 	std::cout << "transMat" << std::endl;
 	std::cout << transMat << std::endl << std::endl;
-
+*/
 }
 
 // スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
@@ -289,15 +289,15 @@ jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1)
 
 // 透視深度（？）
 // Zやテクスチャ座標を計算するのに使う
-jhl_xyz jhl3Dlib::_toushi_shindo(points, far, near)
+jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 {
-	//def pers_r(p, far, near) :
+	//def pers_r(p, vp_far, vp_near) :
 	dest = []
 		for p in points :
-	x = -near / p[2] * p[0]
-		y = -near / p[2] * p[1]
-		z = -far*near / p[2] - (far + near) / 2
-		z = z*(-2 / (far - near))
+	x = -vp_near / p[2] * p[0]
+		y = -vp_near / p[2] * p[1]
+		z = -vp_far*vp_near / p[2] - (vp_far + vp_near) / 2
+		z = z*(-2 / (vp_far - vp_near))
 		dest.append((x, y, z))
 		return dest
 }
@@ -430,6 +430,7 @@ int jhl3Dlib::drawLines(polMdl & mdl)
 		{
 			t_vert[0] = jhl3Dlib::transMat * mdl.model.vert[i];
 			painter->point(t_vert[0]);
+			std::cout << mdl.model.vert[i] << " -> " << t_vert[0];
 		}
 
 		break;

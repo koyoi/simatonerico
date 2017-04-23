@@ -7,8 +7,8 @@
 
 
 struct viewport_config {
-	int far;
-	int near;
+	int vp_far;
+	int vp_near;
 	int left, right;
 	int top, btm;
 };
