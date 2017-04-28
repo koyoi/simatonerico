@@ -102,9 +102,10 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN32_</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN32_;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <MinimalRebuild>false</MinimalRebuild>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,6 +154,7 @@
     <ClInclude Include="basic3dCalc.h" />
     <ClInclude Include="hal_graphics.h" />
     <ClInclude Include="jhl3dLib.h" />
+    <ClInclude Include="L:\Users\mayura.kage7\Documents\My Dropbox\jhl_3d\3d_test_cpp\3d_test_cpp\hal_gfx_ocv.h" />
     <ClInclude Include="readData.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -162,6 +164,7 @@
     <ClCompile Include="basic3dCalc.cpp" />
     <ClCompile Include="hal_graphics.cpp" />
     <ClCompile Include="jhl3dLib.cpp" />
+    <ClCompile Include="L:\Users\mayura.kage7\Documents\My Dropbox\jhl_3d\3d_test_cpp\3d_test_cpp\hal_gfx_ocv.cpp" />
     <ClCompile Include="readData.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

@@ -90,7 +90,10 @@ int read_data(modelData& model, std::string filename)
 
 			else if (reading_line_buffer == "::color")
 			{
-				reading_file >> model.attr[group_target].color.r >> delimiter >> model.attr[group_target].color.g >> delimiter >> model.attr[group_target].color.b;
+				int	c[3];
+
+				reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
+				model.attr[group_target].color = c;
 			}
 
 			else if (reading_line_buffer == "::member")

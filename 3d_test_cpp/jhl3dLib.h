@@ -38,7 +38,6 @@ class modelData {
 public:
 	static void dataDump(modelData&, bool detail = false);
 
-
 public:
 	int			n_vert;
 	jhl_xyz*	vert;	// vert ‚Í”z—ñ‚Ì‚Â‚à‚è‚È‚Ì‚¾‚ªA‚±‚ê‚Å‚¢‚¢‚ç‚µ‚¢
@@ -47,45 +46,16 @@ public:
 	int			n_group;
 	grpAttrib*	attr;
 
-/*
-	modelData& operator=(const modelData& src)
-	{
-		n_vert = src.n_vert;
-		{
-			vert = new jhl_xyz[n_vert];
-			for (int i = 0; i < n_vert; i++)
-			{
-				vert[i] = src.vert[i];
-			}
-		}
-
-		n_pol = src.n_pol;
-		poldef = new pol_def[n_pol];
-		for (int i = 0; i < n_pol; i++)
-		{
-			poldef[i] = src.poldef[i];
-		}
-
-		n_group = src.n_group;
-		attr = new grpAttrib[n_group];
-		for (int i = 0; i < n_group; i++)
-		{
-			attr[i] = src.attr[i];
-		}
-
-		return *this;
-	}
-	*/
 };
 
 
+struct object {
+	matHomo4		model_mat;
+	modelData*		p_model;
 
-
-
-
-struct polMdl {
-	matHomo4	model_mat;	//	 = [aff,size]
-	modelData	model;
+	// todo ‚à‚Á‚Æ‚¢‚¢À‘•
+	bool		attrib_override;
+	jhl_rgb		color;
 };
 
 // ------------------------------------------------------------
@@ -142,7 +112,7 @@ public:
 		}
 	}
 
-	static int draw(polMdl& mdl);
+	static int draw(object& mdl);
 
 	static En_draw_type draw_type_next();
 };

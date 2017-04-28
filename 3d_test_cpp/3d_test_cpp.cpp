@@ -49,7 +49,11 @@ struct sceneObj
 	matHomo4	trans;
 	jhl_size	size = 1;
 	//	jhl_xyz	move_vect_ofst;		// todo ローカルの原点以外を中心に回転したいとき
-	bool	is_moved;
+	bool		is_moved;
+	object		obj;
+
+	bool		attrib_override;
+	jhl_rgb		color;
 	// 他、雑多
 };
 
@@ -57,7 +61,8 @@ struct sceneObj
 
 // ---------------------------------------------------
 #define N_PARA_LIGHTS	2
-const int NUM_OBJ = 2;
+#define NUM_MODEL	2
+#define NUM_OBJ		3
 
 int		param1 = 0;
 int		param2 = 0;
@@ -69,9 +74,8 @@ bool	area_changed = true;
 bool	frame_pause = false;
 jhl_rgb	font_color_info_defaut = jhl_rgb(0, 255, 255);
 
-polMdl		models[NUM_OBJ];	//	ポリゴンモデルそのものと、それに適用するアフィン変換の最終的なマトリックス
+modelData	models[NUM_MODEL];	//	ポリゴンモデルそのものと、それに適用するアフィン変換の最終的なマトリックス
 sceneObj	obj[NUM_OBJ];		//	位置・回転、速度その他諸々
-
 
 
 void mat_test(void);
@@ -88,21 +92,21 @@ main(int argc, char *argv[])
 	painter.disp_init(window);	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
 
 	{
-		const int vp_far = 80;
-		const int vp_near = 5;
-		const int left = -20;
-		const int right = -left;
-		const int top = -left*(window.x / window.y);
-		const int btm = -top;
-		viewport_area = { vp_far, vp_near,  left, right, top, btm };
+		int vp_far = 80;
+		int vp_near = 5;
+		float left = -20;
+		float right = -left;
+		float top = -left*((float)window.y / window.x);
+		float btm = -top;
+		viewport_area = { vp_far, vp_near,  (int)left, (int)right, (int)top, (int)btm };
 	}
-	jhl3Dlib::set_proj_mat(viewport_area, false);	// パースあり。
+	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : パースあり。
 
-	jhl_rgb light_ambient = { .15f, .15f, .15f };
-	dir_light lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
+	jhl_rgb		light_ambient = { .15f, .15f, .15f };
+	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
-	jhl_rgb line_color = jhl_rgb(210, 150, 130);
-	int line_width = 1;
+	jhl_rgb		line_color = jhl_rgb(210, 150, 130);
+	int			line_width = 1;
 
 	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f);
 	lights[0].col = jhl_rgb(0.f, .7f, .5f);
@@ -127,17 +131,17 @@ main(int argc, char *argv[])
 	// ファイル読み込み
 	std::cout << "read data" << std::endl;
 	int rv = 0;
-	for (int i = 0; i < NUM_OBJ; i++)
+	for (int i = 0; i < NUM_MODEL; i++)
 	{
 		std::cout << "read file : " << data_file[i] << std::endl;
-		if (read_data(models[i].model, data_file[i]) <= 0) {
+		if (read_data(models[i], data_file[i]) <= 0) {
 			std::cout << "file read error. abort." << std::endl;
 			exit(-1);
 		}
 		else
 		{
 			std::cout << "obj id: " << i << std::endl;
-			modelData::dataDump(models[i].model, true);
+			modelData::dataDump(models[i]);
 			std::cout << std::endl;
 			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
 		}
@@ -158,15 +162,30 @@ main(int argc, char *argv[])
 	obj[0].size = 1;
 //	obj[0].size *= jhl_size(1, 2, 3);
 	obj[0].is_moved = true;
+	obj[0].obj.p_model = &models[0];
+
 
 	obj[1].size = 1;
-	obj[1].trans = matHomo4(jhl_xyz(5, 2, -40));
+	obj[1].pos = jhl_xyz(5, 2, -10);
+	//	obj[1].trans = matHomo4(jhl_xyz(5, 2, -10));
+	obj[1].trans = 1;
 	obj[1].acc = matHomo4(1);
 //	obj[1].acc.rot_axis_x(0.2f);
-	obj[1].acc.rot_axis_y(0.3f);
+	obj[1].acc.rot_axis_y(0.3f/3.14);
 //	obj[1].acc.rot_axis_z(0.4f);
 	obj[1].is_moved = true;
+	obj[1].obj.p_model = &models[1];
 
+	obj[2].pos = jhl_xyz(-2, 4, -15);
+	obj[2].trans = 1;
+	obj[2].acc = 1;
+	obj[2].acc.rot_axis_x(0.25f / 3.14);
+	//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	obj[2].size = 1.5;
+	//	obj[2].size *= jhl_size(1, 2, 3);
+	obj[2].obj.p_model = &models[0];
+	obj[2].obj.attrib_override = true;
+	obj[2].obj.color = jhl_rgb(255, 220, 50);
 
 
 	// マウスイベント時に関数mouse_eventの処理を行う
@@ -219,17 +238,15 @@ main(int argc, char *argv[])
 			// todo
 
 			obj[i].trans = obj[i].acc * obj[i].trans;
-			rigid_trans( &models[i].model_mat, obj[i].pos, obj[i].trans, obj[i].size);
+			rigid_trans( &obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
 		}
 
 		int rv;
 		// 実際の描画
-//		for (int i = 0; i < NUM_OBJ; i++)
-		for (int i = 0; i < 1; i++)
-			{
-
-			// 描画
-			rv = jhl3Dlib::draw(models[i]);
+		for (int i = 0; i < NUM_OBJ; i++)
+//		for (int i = 1; i < 2; i++)
+		{
+			rv = jhl3Dlib::draw(obj[i].obj);
 		}
 
 		// ui

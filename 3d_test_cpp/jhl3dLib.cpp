@@ -231,24 +231,25 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 	transMat = m_proj_disp * m_model_view;	// todo 書き下す
 /*
 	std::cout << "model mat" << std::endl;
-	std::cout << mdl_mat << std::endl << std::endl;
-
+	std::cout << mdl_mat << std::endl;
+	
 	std::cout << "view mat" << std::endl;
-	std::cout << view_mat << std::endl << std::endl;
+	std::cout << view_mat << std::endl;
 
-	std::cout << "proj mat" << std::endl;
-	std::cout << proj_mat << std::endl << std::endl;
+ 	std::cout << "proj mat" << std::endl;
+ 	std::cout << proj_mat << std::endl;
 
-	std::cout << "disp mat" << std::endl;
-	std::cout << m_proj_disp << std::endl << std::endl;
+ 	std::cout << "disp mat" << std::endl;
+ 	std::cout << m_proj_disp << std::endl;
 
-	std::cout << "view_mat*mdl_mat" << std::endl;
-	std::cout << m_model_view << std::endl << std::endl;
+ 	std::cout << "view_mat * mdl_mat" << std::endl;
+ 	std::cout << m_model_view << std::endl;
 
-	std::cout << "transMat" << std::endl;
-	std::cout << transMat << std::endl << std::endl;
+ 	std::cout << "transMat" << std::endl;
+ 	std::cout << transMat << std::endl;
 */
 }
+
 
 // スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
 // todo １ライン一気版
@@ -372,10 +373,10 @@ void modelData::dataDump(modelData& mdl, bool detail)
 
 
 
-int jhl3Dlib::draw(polMdl & mdl)
+int jhl3Dlib::draw(object& mdl)
 {
 	int rv = 0;
-	tgtMdl = &mdl.model;
+	tgtMdl = mdl.p_model;
 
 	jhl_xyz	t_vert[3];
 	jhl_xyz	t_vert_disp[3]; 
@@ -385,24 +386,31 @@ int jhl3Dlib::draw(polMdl & mdl)
 	switch ( jhl3Dlib::draw_type )
 	{
 	case drawType_vertex:
-		painter->set_lineColor(mdl.model.attr[0].color);
-		for (int i = 0; i < mdl.model.n_vert; i++)
+		painter->set_lineColor(tgtMdl->attr[0].color);
+		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
-			t_vert[0] = jhl3Dlib::transMat * mdl.model.vert[i];
+			t_vert[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
 			painter->point(t_vert[0]);
-			std::cout << mdl.model.vert[i] << " -> " << t_vert[0];
+			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
 
 		break;
 	case drawType_line:	// ワイヤフレーム（影面消去なし)
-		painter->set_lineColor(mdl.model.attr[0].color);
-		pol_def t_poldef;
-		for (int i = 0; i < mdl.model.n_pol; i++)
+		if (mdl.attrib_override)
 		{
-			t_poldef = mdl.model.poldef[i];
-			t_vert_disp[0] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.a ];	// todo キャッシュ or buff
-			t_vert_disp[1] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
-			t_vert_disp[2] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.c ];
+			painter->set_lineColor(mdl.color);
+		}
+		else
+		{
+			painter->set_lineColor(tgtMdl->attr[0].color);
+		}
+		pol_def t_poldef;
+		for (int i = 0; i < tgtMdl->n_pol; i++)
+		{
+			t_poldef = tgtMdl->poldef[i];
+			t_vert_disp[0] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.a ];	// todo キャッシュ or buff
+			t_vert_disp[1] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
+			t_vert_disp[2] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.c ];
 
 			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
 			//debug
@@ -417,7 +425,7 @@ int jhl3Dlib::draw(polMdl & mdl)
 			painter->line(t_vert_disp[0], t_vert_disp[2], false);
 
 			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
-//			std::cout << mdl.model.vert[0] << mdl.model.vert[1] << mdl.model.vert[2] << std::endl;
+//			std::cout << tgtMdl->vert[0] << tgtMdl->vert[1] << tgtMdl->vert[2] << std::endl;
 		}
 		break;
 	case drawType_line_front_face:

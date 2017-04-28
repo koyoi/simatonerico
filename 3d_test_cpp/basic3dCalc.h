@@ -109,7 +109,7 @@ public:
 	// ƒxƒNƒgƒ‹‚È‚ç‚Å‚Í
 	// ƒmƒ‹ƒ€
 	float norm() {
-		return sqrtf(x * x + y + y + z + z);
+		return sqrtf(x * x + y * y + z * z);
 	}
 
 	// “àÏ
@@ -231,7 +231,11 @@ public:
 	{}
 
 	jhl_rgb(int r_, int g_, int b_) :
-		r((float)r_/255), g((float)g_/255), b((float)b_/255)
+		r((float)r_ / 255), g((float)g_ / 255), b((float)b_ / 255)
+	{}
+
+	jhl_rgb(int c[3]) :
+		r((float)c[0] / 255), g((float)c[1] / 255), b((float)c[2]/ 255)
 	{}
 
 	jhl_rgb operator*(const float rhs) const {
@@ -514,7 +518,6 @@ public:
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4& p)
 	{
-		os << std::endl;
 		os << "[ " << p.m[0] << ", \t" << p.m[1] << ", \t" << p.m[2] << ", \t" << p.v[0] << std::endl;
 		os << "  " << p.m[3] << ", \t" << p.m[4] << ", \t" << p.m[5] << ", \t" << p.v[1] << std::endl;
 		os << "  " << p.m[6] << ", \t" << p.m[7] << ", \t" << p.m[8] << ", \t" << p.v[2] << std::endl;
@@ -622,7 +625,6 @@ public:
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4_full& p)
 	{
-		os << std::endl;
 		os << "[ " << p.m[0] << ", \t" << p.m[1] << ", \t" << p.m[2] << ", \t" << p.m[3] << std::endl;
 		os << "  " << p.m[4] << ", \t" << p.m[5] << ", \t" << p.m[6] << ", \t" << p.m[7] << std::endl;
 		os << "  " << p.m[8] << ", \t" << p.m[9] << ", \t" << p.m[10] << ", \t" << p.m[11] << std::endl;
@@ -632,7 +634,6 @@ public:
 
 	void show() {
 		// todo ‘‚«’¼‚µ
-		std::cout << std::endl;
 		std::cout << "[ " << m[ 0] << ", \t" << m[ 1] << ", \t" << m[ 2] << ", \t" << m[ 3] << std::endl;
 		std::cout << "  " << m[ 4] << ", \t" << m[ 5] << ", \t" << m[ 6] << ", \t" << m[ 7] << std::endl;
 		std::cout << "  " << m[ 8] << ", \t" << m[ 9] << ", \t" << m[10] << ", \t" << m[11] << std::endl;
