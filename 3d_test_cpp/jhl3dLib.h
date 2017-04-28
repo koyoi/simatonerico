@@ -36,7 +36,7 @@ struct grpAttrib
 
 class modelData {
 public:
-	static void dataDump(modelData&);
+	static void dataDump(modelData&, bool detail = false);
 
 
 public:
@@ -47,6 +47,35 @@ public:
 	int			n_group;
 	grpAttrib*	attr;
 
+/*
+	modelData& operator=(const modelData& src)
+	{
+		n_vert = src.n_vert;
+		{
+			vert = new jhl_xyz[n_vert];
+			for (int i = 0; i < n_vert; i++)
+			{
+				vert[i] = src.vert[i];
+			}
+		}
+
+		n_pol = src.n_pol;
+		poldef = new pol_def[n_pol];
+		for (int i = 0; i < n_pol; i++)
+		{
+			poldef[i] = src.poldef[i];
+		}
+
+		n_group = src.n_group;
+		attr = new grpAttrib[n_group];
+		for (int i = 0; i < n_group; i++)
+		{
+			attr[i] = src.attr[i];
+		}
+
+		return *this;
+	}
+	*/
 };
 
 
@@ -90,8 +119,7 @@ public:
 	static void		set_painter(disp_ocv2& p) { painter = &p; };	
 	
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
-	static void		set_proj_mat_norm(viewport_config& m_);
-	static void		set_proj_mat_ortho(viewport_config& m_);
+	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
 	/*
 	ª‚Ì‚½‚ßA”pŽ~—\’è
@@ -114,8 +142,7 @@ public:
 		}
 	}
 
-
-	static int drawLines(polMdl& mdl);
+	static int draw(polMdl& mdl);
 
 	static En_draw_type draw_type_next();
 };

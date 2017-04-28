@@ -7,7 +7,6 @@
 // http://www.hiramine.com/programming/c_cpp/operator.html
 
 
-
 // 座標
 struct jhl_xy {
 	float x;
@@ -31,8 +30,6 @@ public:
 };
 
 
-
-
 class jhl_xyz {
 public:
 	float x;	// 座標
@@ -46,6 +43,7 @@ public:
 	jhl_xyz(float i) :
 		x(i), y(i), z(i)
 	{}
+
 
 	jhl_xyz& operator+=(jhl_xyz rhs) {
 		x += rhs.x;
@@ -137,9 +135,7 @@ public:
 	}
 
 	operator jhl_xy_i() {
-		jhl_xy_i t;
-		t.x = (int)x;
-		t.y = (int)y;
+		jhl_xy_i t((int)x,(int)y);
 		return t;
 	}
 
@@ -156,16 +152,36 @@ public:
 
 	friend std::ostream& operator<< (std::ostream& os, const jhl_xyz& p)
 	{
-		os << std::endl;
 		os << "[ " << p.x << ", \t" << p.y << ", \t" << p.z << "]" << std::endl;
 		return os;
 	};
+};
+
+class jhl_size {
+public:
+	// float sx,sy,sz,sw
+	float s[4];
+
+public:
+	jhl_size() 
+	{}
+
+	jhl_size(float s_) :
+		s{ s_, s_, s_, 1 }
+		//s{ 1,1,1, 1/s_ }
+	{}
+
+	jhl_size( float sx, float sy, float sz ):
+		s{ sx, sy, sz, 1 }
+	{}
 };
 
 
 class matHomo1 {
 public:
 	float m[4];
+
+public:
 	matHomo1()
 	{}
 
@@ -205,7 +221,7 @@ public:
 	unsigned char g;
 	unsigned char b;
 	*/
-	float r;	// 0-255
+	float r;	// 0-1
 	float g;
 	float b;
 
@@ -269,12 +285,14 @@ public:
 		0, 0, (float)i },
 		v{ 0, 0, 0, (float)i }	// ident() の方が早いかもね
 	{};
+	/*
 	matHomo4(float a, float b, float c)
 		:v{ a, b, c, 1 },
 		m{ (float)1, 0, 0,
 		0, (float)1, 0,
 		0, 0, (float)1 }
 	{};
+	*/
 	matHomo4(jhl_xyz pos)
 		:v{ pos.x, pos.y, pos.z, 1 },
 		m{ (float)1, 0, 0,
@@ -295,7 +313,12 @@ public:
 		a.z, b.z, c.z },
 		v{ d.x, d.y, d.z, 1.f }
 	{};
-
+	matHomo4(jhl_size s_)
+		:v{ 0,0,0, 1 },
+		m{ s_.s[0], 0, 0,
+		0, s_.s[1], 0,
+		0, 0, s_.s[2] }
+	{};
 
 	void i() {
 		m[0] = m[4] = m[8] = v[3] = 1;
@@ -389,8 +412,11 @@ public:
 
 	// 外積
 	matHomo4 operator*(matHomo4 rhs) const {	
-	//m3:matrix([m_0,m_1,m_2,v_0],[m_3,m_4,m_5,v_1],[m_6,m_7,m_8,v_2],[0,0,0,v_3]);
-	//m4:matrix([rhs_m0,rhs_m1,rhs_m2,rhs_v0],[rhs_m3,rhs_m4,rhs_m5,rhs_v1],[rhs_m6,rhs_m7,rhs_m8,rhs_v2],[0,0,0,rhs_v3]);
+		/* maxima code
+	m3:matrix([m_0,m_1,m_2,v_0],[m_3,m_4,m_5,v_1],[m_6,m_7,m_8,v_2],[0,0,0,v_3]);
+	m4:matrix([rhs_m0,rhs_m1,rhs_m2,rhs_v0],[rhs_m3,rhs_m4,rhs_m5,rhs_v1],[rhs_m6,rhs_m7,rhs_m8,rhs_v2],[0,0,0,rhs_v3]);
+	m3.m4;
+	*/
         matHomo4 t;
 		t.m[0] = m[0] * rhs.m[0] + m[1] * rhs.m[3] + m[2] * rhs.m[6];
 		t.m[1] = m[0] * rhs.m[1] + m[1] * rhs.m[4] + m[2] * rhs.m[7];
@@ -426,6 +452,21 @@ public:
 		*this = t;
 		return *this;
 	}
+
+	matHomo4 operator+(matHomo4 rhs) const {
+		matHomo4 t;
+		for (int i = 0; i < 4; i++)
+		{
+			t.m[i] = m[i] + rhs.m[i];
+			t.v[i] = v[i] + rhs.v[i];
+		}
+		for (int i = 4; i < 9; i++)
+		{
+			t.m[i] = m[i] + rhs.m[i];
+		}
+		return t;
+	}
+
 #if 0
 	operator matHomo4_full() const {	// キャスト演算子
 		/*
@@ -500,6 +541,11 @@ public:
 
 	// 外積
 	matHomo4_full operator*(matHomo4 rhs) const {
+		/* maxima code
+		m3:matrix([m_0,m_1,m_2,v_0],[m_3,m_4,m_5,v_1],[m_6,m_7,m_8,v_2],[0,0,0,v_3]);
+		m4:matrix([rhs_m0,rhs_m1,rhs_m2,rhs_m3],[rhs_m4,rhs_m5,rhs_m6,rhs_m7],[rhs_m8,rhs_m9,rhs_m10,rhs_m11],[rhs_m12,rhs_m13,rhs_m14,rhs_m15]);
+		m4.m3;
+		*/
 		matHomo4_full t;
 		t.m[0] = m[2] * rhs.m[6] + m[1] * rhs.m[3] + m[0] * rhs.m[0];
 		t.m[1] = m[2] * rhs.m[7] + m[1] * rhs.m[4] + m[0] * rhs.m[1];
@@ -593,4 +639,9 @@ public:
 		std::cout << "  " << m[12] << ", \t" << m[13] << ", \t" << m[14] << ", \t" << m[15] << " ]" << std::endl;
 	}
 };
+
+
+
+void rigid_trans(matHomo4* trans_mat, const jhl_xyz& pos, const matHomo4& r, const jhl_size& size);
+
 

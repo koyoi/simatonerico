@@ -22,9 +22,9 @@ public:
 	virtual void	point(jhl_xy_i pos, int size = 2) = 0;
 	virtual void	line(jhl_xy_i start, jhl_xy_i end, bool draw_z = 1) = 0;	// このときは既にディスプレイ座標になっているはずなのだ
 	virtual void	line_h(float v, float h_start, float h_end) = 0;
-	virtual void	circle(jhl_xy_i pos, int r, jhl_rgb, int thickness = 1 ) = 0;
-	virtual void	rectangle(jhl_xy_i start, jhl_xy_i end, jhl_rgb color, int thickness = 1) = 0;
-	virtual void	putText(const char* s, jhl_xy_i pos, jhl_rgb color) = 0;
+	virtual void	circle(jhl_xy_i pos, int r, jhl_rgb&, int thickness = 1 ) = 0;
+	virtual void	rectangle(jhl_xy_i start, jhl_xy_i end, jhl_rgb& color, int thickness = 1) = 0;
+	virtual void	putText(const char* s, jhl_xy_i pos, jhl_rgb& color) = 0;
 };
 
 

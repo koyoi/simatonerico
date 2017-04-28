@@ -4,9 +4,16 @@
 #include "jhl3Dlib.h"
 #include "readData.h"
 
+/*
+メモ
+https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
+
+
+*/
+
 //-----------------------------------------------------------
 
-En_draw_type	jhl3Dlib::draw_type = drawType_vertex; // drawType_flat;
+En_draw_type	jhl3Dlib::draw_type = drawType_vertex;
 modelData*	jhl3Dlib::tgtMdl;
 jhl_rgb		jhl3Dlib::light_ambient;
 dir_light	jhl3Dlib::light_directional[2];
@@ -104,35 +111,9 @@ void jhl3Dlib::set_disp_trans(const jhl_xy_i& window_)
 	display = window_ /2;
 }
 
-#if 0
-set_disp_trans(const jhl_xy_i& window);　のため、廃止予定
-matHomo4 jhl3Dlib::disp_trans(const jhl_xy_i& window)
-{
-	matHomo4 m;
-	m.m[0 * 4 + 0] = (float)window.x / 2;
-	m.m[1 * 4 + 1] = (float)window.y / 2;
-	m.m[0 * 4 + 3] = (float)window.x / 2;
-	m.m[1 * 4 + 3] = (float)window.y / 2;
-	m.m[2 * 4 + 2] = 1.0f;
-	m.m[3 * 4 + 3] = 1.0f;
-	return m;
-}
-
-matHomo4 jhl3Dlib::disp_trans_inv(matHomo4& mat_disp_trans)
-{
-	matHomo4 m;
-	m.m[0 * 4 + 0] = 1 / (mat_disp_trans.m[0 * 4 + 0]);
-	m.m[1 * 4 + 1] = 1 / (mat_disp_trans.m[1 * 4 + 1]);
-	m.m[2 * 4 + 2] = 1;
-	m.m[3 * 4 + 3] = 1;
-	m.m[0 * 4 + 3] = -1;
-	m.m[1 * 4 + 3] = -1;
-	return m;
-}
-#endif
 
 #if 1	// 上下左右対称バージョン
-void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
+void jhl3Dlib::set_proj_mat(viewport_config & m_, bool ortho)
 {
 	vp = m_;
 	matHomo4_full mp;
@@ -142,39 +123,33 @@ void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
 	rl = vp.right - vp.left;
 	tb = vp.top - vp.btm;
 	fn = vp.vp_far - vp.vp_near;
-	mp.m[0 * 4 + 0] = (float)2 * vp.vp_near / rl;
-	mp.m[1 * 4 + 1] = (float)2 * vp.vp_near / tb;
-	mp.m[0 * 4 + 2] = (float)0;	// (vp.right + vp.left) / rl;
-	mp.m[1 * 4 + 2] = (float)0; // (vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 2] = (float)-(vp.vp_far + vp.vp_near) / fn;
-	mp.m[3 * 4 + 2] = (float)-1;
-	mp.m[2 * 4 + 3] = (float)-2 * vp.vp_far * vp.vp_near / fn;
-	mp.m[3 * 4 + 3] = (float)0;
+
+	if (ortho) {
+		// 等角
+		mp.m[0 * 4 + 0] = (float)2 / rl;
+		mp.m[1 * 4 + 1] = (float)2 / tb;
+		mp.m[2 * 4 + 2] = (float)-2 / fn;
+		mp.m[0 * 4 + 3] = (float)0;	// -(vp.right + vp.left) / rl;
+		mp.m[1 * 4 + 3] = (float)0;	// -(vp.top + vp.btm) / tb;
+		mp.m[2 * 4 + 3] = (float)-(vp.vp_far + vp.vp_near) / fn;
+		mp.m[3 * 4 + 3] = 1;
+	}
+	else
+	{
+		// パースあり
+		mp.m[0 * 4 + 0] = (float)2 * vp.vp_near / rl;
+		mp.m[1 * 4 + 1] = (float)2 * vp.vp_near / tb;
+		mp.m[0 * 4 + 2] = (float)0;	// (vp.right + vp.left) / rl;
+		mp.m[1 * 4 + 2] = (float)0; // (vp.top + vp.btm) / tb;
+		mp.m[2 * 4 + 2] = (float)-(vp.vp_far + vp.vp_near) / fn;
+		mp.m[3 * 4 + 2] = (float)-1;
+		mp.m[2 * 4 + 3] = (float)-2 * vp.vp_far * vp.vp_near / fn;
+		mp.m[3 * 4 + 3] = (float)0;
+	}
 	proj_mat = mp;
 }
 
-
-void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
-{
-	vp = m_;
-	matHomo4_full mp;
-
-	int	rl, tb, fn;
-
-	rl = vp.right - vp.left;
-	tb = vp.top - vp.btm;
-	fn = vp.vp_far - vp.vp_near;
-	mp.m[0 * 4 + 0] = (float)2 / rl;
-	mp.m[1 * 4 + 1] = (float)2 / tb;
-	mp.m[2 * 4 + 2] = (float)-2 / fn;
-	mp.m[0 * 4 + 3] = (float)0;	// -(vp.right + vp.left) / rl;
-	mp.m[1 * 4 + 3] = (float)0;	// -(vp.top + vp.btm) / tb;
-	mp.m[2 * 4 + 3] = (float)-(vp.vp_far + vp.vp_near) / fn;
-
-	mp.m[3 * 4 + 3] = 1;
-	proj_mat = mp;
-}
-#else
+#else	// 視台形が上下/左右対称でない場合。（どう使うの？ 3D視？）
 void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
 {
 	vp = m_;
@@ -223,6 +198,7 @@ void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
 // デバイス座標まで変換する行列を求めてセット
 // ゼロになるのとか、最適化済み。
 /*
+maximaコード
 point1:matrix([x,y,z,1]);
 trans_rot1:matrix([tr00,tr01,tr02,0],[tr10,tr11,tr12,0],[tr20,tr21,tr22,0],[0,0,0,1]);
 trans1:matrix([1,0,0,tx1],[0,1,0,ty1],[0,0,1,yz1],[0,0,0,1]);
@@ -240,8 +216,10 @@ result:mat.point1;
 void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 {
 	matHomo4 m_model_view = view_mat*mdl_mat;	// mview x trans モデルビュー変換
+	matHomo4_full m_proj_disp = proj_mat;	// debug
+#if 0
 	//	matHomo4_full m_proj_disp = proj_mat * disp_mat;	互いにゼロだらけなので書き下す
-	matHomo4_full m_proj_disp = proj_mat;
+	matHomo4_full m_proj_disp = proj_mat;	// todo 実は左下の 2x2 が 0 なのだ
 	m_proj_disp.m[0 * 4 + 0] *= display.x;
 	m_proj_disp.m[1 * 4 + 1] *= display.y;
 	m_proj_disp.m[0 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.x;
@@ -249,6 +227,7 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 	m_proj_disp.m[1 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.y;
 	m_proj_disp.m[1 * 4 + 3] = m_proj_disp.m[3 * 4 + 3] * display.y;
 
+#endif
 	transMat = m_proj_disp * m_model_view;	// todo 書き下す
 /*
 	std::cout << "model mat" << std::endl;
@@ -338,82 +317,62 @@ void  	jhl3Dlib::trans_disp(points)
 #endif
 
 
-void modelData::dataDump(modelData& mdl)
+void modelData::dataDump(modelData& mdl, bool detail)
 {
 	using namespace std;
-	{
-		cout << "vertex : " << mdl.n_vert << endl;
-		jhl_xyz* t = new jhl_xyz[mdl.n_vert];
-		t = mdl.vert;							// todo orz
+
+	cout << "vertex : " << mdl.n_vert << endl;
+	if(detail){
+		jhl_xyz* t;
 		for (int i = 0; i < mdl.n_vert; i++)
 		{
-			cout << i << ": ( " << t[i].x << ", " << t[i].y << ", " << t[i].z << " )" << endl;
+			t = &mdl.vert[i];
+			cout << i << ": ( " << t->x << ", " << t->y << ", " << t->z << " )" << endl;
 		}
-		delete t;
 	}
 
-	{
-		cout << "polygon : " << mdl.n_pol << endl;
-		pol_def* t = new pol_def[mdl.n_pol];
-		t = mdl.poldef;
-
+	cout << "polygon : " << mdl.n_pol << endl;
+	if (detail) {
+		pol_def* t;
 		for (int i = 0; i < mdl.n_pol; i++)
 		{
-			cout << i << " : ( " << t[i].a << ", " << t[i].b << ", " << t[i].c << " )" << endl;
+			t = &mdl.poldef[i];
+			cout << i << " : ( " << t->a << ", " << t->b << ", " << t->c << " )" << endl;
 		}
 	}
 
+	cout << "attributes : " << endl;
+	for (int i = 0; i < mdl.n_group; i++)
 	{
-		cout << "attributes : " << endl;
-		for (int i = 0; i < mdl.n_group; i++)
-		{
-			grpAttrib t = mdl.attr[i];
-
+		grpAttrib t = mdl.attr[i];
+		if (detail) {
 			cout << " member : ";
 			for (int j = 0; j < t.n_member; j++)
 			{
 				cout << t.member[j] << " ,";
 			}
 			cout << endl;
-
-			if (t.pTex == 0)
-			{
-				cout << " no texture" << endl;
-			}
-			else
-			{
-				// todo to be written
-				//	char*	texName;
-				// char*	pTex;
-				// texUv*	uv;
-			}
-
-			cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
 		}
+
+		if (t.pTex == 0)
+		{
+			cout << " no texture" << endl;
+		}
+		else
+		{
+			// todo to be written
+			//	char*	texName;
+			// char*	pTex;
+			// texUv*	uv;
+		}
+
+		cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
 	}
 }
 
 
 
-/*
-t_work = t.dot(t_work)       // モデルの回転、拡大縮小(、・移動)行列の更新
-
-temp = r.dot(t_work)         // モデルの移動
-temp = eye_vec.dot(temp)     // 視点の指定
-temp = area.dot(temp)        // 投影変換       // todo z が正規化範囲から出てしまう？？　
-//    print("mat: obj trans")
-//    print(temp)
-//    print("vec: model points")
-//    print(points)
-poi_trans = trans_vec(points, temp) //諸々の変換をモデルに施す
-//    print("transed points")
-//   for v in pols :
-//       print(v)
-*/
-
-
-
-int jhl3Dlib::drawLines(polMdl & mdl)
+int jhl3Dlib::draw(polMdl & mdl)
 {
 	int rv = 0;
 	tgtMdl = &mdl.model;
@@ -426,6 +385,7 @@ int jhl3Dlib::drawLines(polMdl & mdl)
 	switch ( jhl3Dlib::draw_type )
 	{
 	case drawType_vertex:
+		painter->set_lineColor(mdl.model.attr[0].color);
 		for (int i = 0; i < mdl.model.n_vert; i++)
 		{
 			t_vert[0] = jhl3Dlib::transMat * mdl.model.vert[i];
@@ -434,16 +394,31 @@ int jhl3Dlib::drawLines(polMdl & mdl)
 		}
 
 		break;
-	case drawType_line:
-#if 0
-		if (draw_type == 1) : // ワイヤフレーム（影面消去なし)
-			for vecs in points_disp :
-		t.append(tuple(map(int, vecs[0:2]))) // cv2.line が整数しか受け付けない
-			for d in polygons :
-		im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width);
-		im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width);
-		im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width);
-#endif
+	case drawType_line:	// ワイヤフレーム（影面消去なし)
+		painter->set_lineColor(mdl.model.attr[0].color);
+		pol_def t_poldef;
+		for (int i = 0; i < mdl.model.n_pol; i++)
+		{
+			t_poldef = mdl.model.poldef[i];
+			t_vert_disp[0] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.a ];	// todo キャッシュ or buff
+			t_vert_disp[1] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
+			t_vert_disp[2] = jhl3Dlib::transMat * mdl.model.vert[ t_poldef.c ];
+
+			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
+			//debug
+			for (int i = 0; i < 3; i++)
+			{
+				t_vert_disp[i].x = t_vert_disp[i].x * 320 + 320;
+				t_vert_disp[i].y = t_vert_disp[i].y * 240 + 240;
+			}
+
+			painter->line(t_vert_disp[0], t_vert_disp[1], false);
+			painter->line(t_vert_disp[1], t_vert_disp[2], false);
+			painter->line(t_vert_disp[0], t_vert_disp[2], false);
+
+			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
+//			std::cout << mdl.model.vert[0] << mdl.model.vert[1] << mdl.model.vert[2] << std::endl;
+		}
 		break;
 	case drawType_line_front_face:
 #if 0
