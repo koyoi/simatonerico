@@ -6,6 +6,10 @@
 #include "hal_gfx_ocv.h"
 
 
+//#define DISP_MAT_KAKIKUDASHI
+
+
+
 struct viewport_config {
 	int vp_far;
 	int vp_near;
@@ -70,8 +74,9 @@ public:
 	static matHomo4			view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
 
 	static matHomo4_full	proj_mat;	//	投影変換
-
+#ifdef DISP_MAT_KAKIKUDASHI
 	static matHomo4			disp_mat;	//	ディスプレイ変換
+#endif
 	static jhl_xy_i			display;	
 
 	static matHomo4_full	transMat;
@@ -91,11 +96,7 @@ public:
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
-	/*
-	↑のため、廃止予定
-	static matHomo4 disp_trans(const jhl_xy_i&  window);
-	static matHomo4 disp_trans_inv(matHomo4& mat_disp_trans);
-	*/
+
 	static void		setTransMat(matHomo4& mdl_mat);
 
 	static jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);

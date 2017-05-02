@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "jhl3dLib.h"
-#include "jhl3Dlib.h"
 #include "readData.h"
 
 /*
@@ -23,7 +22,9 @@ viewport_config	jhl3Dlib::vp;
 
 matHomo4		jhl3Dlib::view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
 matHomo4_full	jhl3Dlib::proj_mat;	//	投影変換
+#ifdef DISP_MAT_KAKIKUDASHI
 matHomo4		jhl3Dlib::disp_mat;	//	ディスプレイ変換
+#endif
 matHomo4_full	jhl3Dlib::transMat;
 
 disp_ocv2*		jhl3Dlib::painter;
@@ -99,15 +100,15 @@ void jhl3Dlib::set_disp_trans(const jhl_xy_i& window_)
   [  0    0   1   0  ]
   [  0    0   0   1  ]
 */
-/*
+#ifdef DISP_MAT_KAKIKUDASHI
 	disp_mat = matHomo4();
-	disp_mat.m[0 * 4 + 0] = (float)window.x / 2;
-	disp_mat.m[1 * 4 + 1] = (float)window.y / 2;
-	disp_mat.m[0 * 4 + 3] = (float)window.x / 2;
-	disp_mat.m[1 * 4 + 3] = (float)window.y / 2;
+	disp_mat.m[0 * 4 + 0] = (float)window_.x / 2;
+	disp_mat.m[1 * 4 + 1] = (float)window_.y / 2;
+	disp_mat.m[0 * 4 + 3] = (float)window_.x / 2;
+	disp_mat.m[1 * 4 + 3] = (float)window_.y / 2;
 	disp_mat.m[2 * 4 + 2] = 1.0f;
 	disp_mat.m[3 * 4 + 3] = 1.0f;
-*/
+#endif
 	display = window_ /2;
 }
 
@@ -196,7 +197,8 @@ void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
 
 
 // デバイス座標まで変換する行列を求めてセット
-// ゼロになるのとか、最適化済み。
+// ゼロになるのとか、最適化する。
+// …けど、モデル毎に1回だから、大してありがたくない気もする
 /*
 maximaコード
 point1:matrix([x,y,z,1]);
@@ -216,10 +218,12 @@ result:mat.point1;
 void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 {
 	matHomo4 m_model_view = view_mat*mdl_mat;	// mview x trans モデルビュー変換
-	matHomo4_full m_proj_disp = proj_mat;	// debug
-#if 0
-	//	matHomo4_full m_proj_disp = proj_mat * disp_mat;	互いにゼロだらけなので書き下す
-	matHomo4_full m_proj_disp = proj_mat;	// todo 実は左下の 2x2 が 0 なのだ
+
+#ifdef DISP_MAT_KAKIKUDASHI
+	matHomo4_full m_proj_disp = proj_mat * disp_mat;
+//	std::cout << "a:" << std::endl << m_proj_disp << std::endl;
+#else	// 書き下し
+	matHomo4_full	m_proj_disp = proj_mat;	// todo 実はゼロ多い
 	m_proj_disp.m[0 * 4 + 0] *= display.x;
 	m_proj_disp.m[1 * 4 + 1] *= display.y;
 	m_proj_disp.m[0 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.x;
@@ -227,8 +231,39 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 	m_proj_disp.m[1 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.y;
 	m_proj_disp.m[1 * 4 + 3] = m_proj_disp.m[3 * 4 + 3] * display.y;
 
+//	std::cout << "b:" << std::endl << m_proj_disp << std::endl;
 #endif
-	transMat = m_proj_disp * m_model_view;	// todo 書き下す
+
+#if 0
+	 transMat = m_proj_disp * m_model_view;
+	 // 
+#else	// 書き下し
+/* maxima code
+#m: m_model_view
+#mt : m_proj_disp
+point1:matrix([x,y,z,1]);
+mat_model_view:matrix([m_00,m_01,m_02,v_0],[m_10,m_11,m_12,v_1],[m_20,m_21,m_22,v_2],[0,0,0,1]);
+mat_disp_proj:matrix([mt00,0,mt02,mt03],[0,mt11,mt12,mt13],[0,0,mt22,mt23],[0,0,mt32,mt33]);
+mat:mat_disp_proj.mat_model_view;
+result:mat.point1;
+*/
+	transMat.m[0 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 0] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 1] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 2] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 3] = m_proj_disp.m[0 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[0 * 4 + 0] * m_model_view.v[0] + m_proj_disp.m[0 * 4 + 3];
+	transMat.m[1 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 0] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 1] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 2] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 3] = m_proj_disp.m[1 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[1 * 4 + 1] * m_model_view.v[1] + m_proj_disp.m[1 * 4 + 3];
+	transMat.m[2 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 3] = m_proj_disp.m[2 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[2 * 4 + 3];
+	transMat.m[3 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 3] = m_proj_disp.m[3 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[3 * 4 + 3]; 
+#endif
 /*
 	std::cout << "model mat" << std::endl;
 	std::cout << mdl_mat << std::endl;
@@ -239,15 +274,15 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
  	std::cout << "proj mat" << std::endl;
  	std::cout << proj_mat << std::endl;
 
- 	std::cout << "disp mat" << std::endl;
+ 	std::cout << "m_proj_disp" << std::endl;
  	std::cout << m_proj_disp << std::endl;
 
- 	std::cout << "view_mat * mdl_mat" << std::endl;
+ 	std::cout << "m_model_view (=view_mat * mdl_mat)" << std::endl;
  	std::cout << m_model_view << std::endl;
 
  	std::cout << "transMat" << std::endl;
  	std::cout << transMat << std::endl;
-*/
+//*/
 }
 
 
@@ -411,21 +446,17 @@ int jhl3Dlib::draw(object& mdl)
 			t_vert_disp[0] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.a ];	// todo キャッシュ or buff
 			t_vert_disp[1] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
 			t_vert_disp[2] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.c ];
-
-			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
+#if 0
 			//debug
 			for (int i = 0; i < 3; i++)
 			{
 				t_vert_disp[i].x = t_vert_disp[i].x * 320 + 320;
 				t_vert_disp[i].y = t_vert_disp[i].y * 240 + 240;
 			}
-
+#endif
 			painter->line(t_vert_disp[0], t_vert_disp[1], false);
 			painter->line(t_vert_disp[1], t_vert_disp[2], false);
 			painter->line(t_vert_disp[0], t_vert_disp[2], false);
-
-			std::cout << t_vert_disp[0] << t_vert_disp[1] << t_vert_disp[2] << std::endl;
-//			std::cout << tgtMdl->vert[0] << tgtMdl->vert[1] << tgtMdl->vert[2] << std::endl;
 		}
 		break;
 	case drawType_line_front_face:

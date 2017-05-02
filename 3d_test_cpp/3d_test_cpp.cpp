@@ -244,7 +244,6 @@ main(int argc, char *argv[])
 		int rv;
 		// ÀÛ‚Ì•`‰æ
 		for (int i = 0; i < NUM_OBJ; i++)
-//		for (int i = 1; i < 2; i++)
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
 		}
