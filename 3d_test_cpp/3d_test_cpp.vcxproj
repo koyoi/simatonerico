@@ -152,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="basic3dCalc.h" />
+    <ClInclude Include="hal_gfx_ocv.h" />
     <ClInclude Include="hal_graphics.h" />
     <ClInclude Include="jhl3dLib.h" />
     <ClInclude Include="L:\Users\mayura.kage7\Documents\My Dropbox\jhl_3d\3d_test_cpp\3d_test_cpp\hal_gfx_ocv.h" />
@@ -162,9 +163,9 @@
   <ItemGroup>
     <ClCompile Include="3d_test_cpp.cpp" />
     <ClCompile Include="basic3dCalc.cpp" />
+    <ClCompile Include="hal_gfx_ocv.cpp" />
     <ClCompile Include="hal_graphics.cpp" />
     <ClCompile Include="jhl3dLib.cpp" />
-    <ClCompile Include="L:\Users\mayura.kage7\Documents\My Dropbox\jhl_3d\3d_test_cpp\3d_test_cpp\hal_gfx_ocv.cpp" />
     <ClCompile Include="readData.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

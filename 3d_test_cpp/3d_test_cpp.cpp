@@ -105,7 +105,7 @@ main(int argc, char *argv[])
 	jhl_rgb		light_ambient = { .15f, .15f, .15f };
 	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
-	jhl_rgb		line_color = jhl_rgb(210, 150, 130);
+	jhl_rgb		line_color = jhl_rgb(210, 150, 130);	// todo ここ？
 	int			line_width = 1;
 
 	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f);
@@ -171,7 +171,7 @@ main(int argc, char *argv[])
 	obj[1].trans = 1;
 	obj[1].acc = matHomo4(1);
 //	obj[1].acc.rot_axis_x(0.2f);
-	obj[1].acc.rot_axis_y(0.3f/3.14);
+	obj[1].acc.rot_axis_y((float)0.3f/3.14);
 //	obj[1].acc.rot_axis_z(0.4f);
 	obj[1].is_moved = true;
 	obj[1].obj.p_model = &models[1];
@@ -179,7 +179,7 @@ main(int argc, char *argv[])
 	obj[2].pos = jhl_xyz(-2, 4, -15);
 	obj[2].trans = 1;
 	obj[2].acc = 1;
-	obj[2].acc.rot_axis_x(0.25f / 3.14);
+	obj[2].acc.rot_axis_x((float)(0.25f / 3.14));
 	//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
 	obj[2].size = 1.5;
 	//	obj[2].size *= jhl_size(1, 2, 3);

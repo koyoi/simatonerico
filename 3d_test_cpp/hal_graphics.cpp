@@ -7,4 +7,5 @@
 float	disp_base::v;
 jhl_rgb	disp_base::line_color;
 int		disp_base::line_width;
+jhl_rgb	disp_base::fill_color;
 jhl_xy_i disp_base::window_size;

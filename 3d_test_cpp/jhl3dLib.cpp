@@ -13,9 +13,9 @@ https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 //-----------------------------------------------------------
 
 En_draw_type	jhl3Dlib::draw_type = drawType_vertex;
-modelData*	jhl3Dlib::tgtMdl;
-jhl_rgb		jhl3Dlib::light_ambient;
-dir_light	jhl3Dlib::light_directional[2];
+modelData*		jhl3Dlib::tgtMdl;
+jhl_rgb			jhl3Dlib::light_ambient;
+dir_light		jhl3Dlib::light_directional[2];
 
 jhl_xy_i		jhl3Dlib::display;
 viewport_config	jhl3Dlib::vp;
@@ -414,7 +414,9 @@ int jhl3Dlib::draw(object& mdl)
 	tgtMdl = mdl.p_model;
 
 	jhl_xyz	t_vert[3];
-	jhl_xyz	t_vert_disp[3]; 
+	jhl_xyz	t_vert_disp[3];
+
+	bool	mode_sub;
 
 	setTransMat( mdl.model_mat );
 
@@ -426,56 +428,33 @@ int jhl3Dlib::draw(object& mdl)
 		{
 			t_vert[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
 			painter->point(t_vert[0]);
-			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
+//			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
 
 		break;
-	case drawType_line:	// ワイヤフレーム（影面消去なし)
+	case drawType_line:				// ワイヤフレーム（裏面消去なし)
+	case drawType_line_front_face:	// ワイヤフレーム（裏面消去あり)
+		mode_sub = ( jhl3Dlib::draw_type == drawType_line_front_face ? true : false );
 		if (mdl.attrib_override)
 		{
-			painter->set_lineColor(mdl.color);
+			painter->set_lineColor(mdl.color);	// シーンのモデル設定に設定してある属性
 		}
 		else
 		{
-			painter->set_lineColor(tgtMdl->attr[0].color);
+			painter->set_lineColor(tgtMdl->attr[0].color);	// 読み込んだモデル定義に定義された色 todo
 		}
+
 		pol_def t_poldef;
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
 			t_poldef = tgtMdl->poldef[i];
-			t_vert_disp[0] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.a ];	// todo キャッシュ or buff
-			t_vert_disp[1] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
-			t_vert_disp[2] = jhl3Dlib::transMat * tgtMdl->vert[ t_poldef.c ];
-#if 0
-			//debug
-			for (int i = 0; i < 3; i++)
-			{
-				t_vert_disp[i].x = t_vert_disp[i].x * 320 + 320;
-				t_vert_disp[i].y = t_vert_disp[i].y * 240 + 240;
-			}
-#endif
-			painter->line(t_vert_disp[0], t_vert_disp[1], false);
-			painter->line(t_vert_disp[1], t_vert_disp[2], false);
-			painter->line(t_vert_disp[0], t_vert_disp[2], false);
-		}
-		break;
-	case drawType_line_front_face:
-#if 0
-		elif(draw_type == 2) : // ワイヤフレーム、影面消去あり
-			pols_drawn = 0;
-		for vecs in points_disp :
-		t.append(tuple(map(int, vecs[0:2]))) // cv2.line が整数しか受け付けない
-			for d in polygons :
-		if (check_side((points_disp[d[0]], points_disp[d[1]], points_disp[d[2]])) > 0) :
-			//                print(line_color)
-			//                print(t[d[0]], t[d[1]], t[d[2]])
-			im = cv2.line(im, t[d[0]], t[d[1]], line_color, line_width);
-		im = cv2.line(im, t[d[1]], t[d[2]], line_color, line_width);
-		im = cv2.line(im, t[d[2]], t[d[0]], line_color, line_width);
-		pols_drawn += 1;
-		print("polygons drawn: ", pols_drawn);
+			jhl_xyz* p_vert = tgtMdl->vert;
+			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[ t_poldef.a ];	// todo キャッシュ or buff
+			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
+			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[ t_poldef.c ];
 
-#endif
+			painter->triangle(t_vert_disp, false, mode_sub);
+		}
 		break;
 	case drawType_flat:
 		break;

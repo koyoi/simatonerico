@@ -68,21 +68,25 @@ class jhl3Dlib
 {
 
 public:
+	friend disp_base;
+
 	static En_draw_type	draw_type;
 
-	static viewport_config	vp;
-	static matHomo4			view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
+	static jhl_rgb		light_ambient;
+	static dir_light	light_directional[2];
 
+private:
+	static viewport_config	vp;
+	static jhl_xy_i			display;
+
+
+	static matHomo4			view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
 	static matHomo4_full	proj_mat;	//	投影変換
 #ifdef DISP_MAT_KAKIKUDASHI
 	static matHomo4			disp_mat;	//	ディスプレイ変換
 #endif
-	static jhl_xy_i			display;	
+	static matHomo4_full	transMat;	// 最終的な変換行列
 
-	static matHomo4_full	transMat;
-
-	static jhl_rgb		light_ambient;
-	static dir_light	light_directional[2];
 
 private:
 	static modelData*	tgtMdl;
