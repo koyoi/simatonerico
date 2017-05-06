@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 	// ディスプレイ変換
 	jhl3Dlib::set_disp_trans(window);
 
-	jhl3Dlib::draw_type = drawType_line;
+	jhl3Dlib::set_draw_type( drawType_line_front_face );
 
 	// ファイル読み込み
 	std::cout << "read data" << std::endl;

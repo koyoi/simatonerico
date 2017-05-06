@@ -415,15 +415,23 @@ int jhl3Dlib::draw(object& mdl)
 
 	jhl_xyz	t_vert[3];
 	jhl_xyz	t_vert_disp[3];
-
-	bool	mode_sub;
+	bool frontface;
 
 	setTransMat( mdl.model_mat );
+
+	// 色設定 toria
+	if (mdl.attrib_override)
+	{
+		painter->set_lineColor(mdl.color);	// シーンのモデル設定に設定してある属性
+	}
+	else
+	{
+		painter->set_lineColor(tgtMdl->attr[0].color);	// 読み込んだモデル定義に定義された色 todo fillcolor
+	}
 
 	switch ( jhl3Dlib::draw_type )
 	{
 	case drawType_vertex:
-		painter->set_lineColor(tgtMdl->attr[0].color);
 		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
 			t_vert[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
@@ -432,28 +440,20 @@ int jhl3Dlib::draw(object& mdl)
 		}
 
 		break;
+
 	case drawType_line:				// ワイヤフレーム（裏面消去なし)
 	case drawType_line_front_face:	// ワイヤフレーム（裏面消去あり)
-		mode_sub = ( jhl3Dlib::draw_type == drawType_line_front_face ? true : false );
-		if (mdl.attrib_override)
-		{
-			painter->set_lineColor(mdl.color);	// シーンのモデル設定に設定してある属性
-		}
-		else
-		{
-			painter->set_lineColor(tgtMdl->attr[0].color);	// 読み込んだモデル定義に定義された色 todo
-		}
-
+		frontface = (jhl3Dlib::draw_type == drawType_line_front_face ? true : false);
 		pol_def t_poldef;
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
 			t_poldef = tgtMdl->poldef[i];
 			jhl_xyz* p_vert = tgtMdl->vert;
-			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[ t_poldef.a ];	// todo キャッシュ or buff
-			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする
+			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[ t_poldef.a ];	// todo キャッシュ
+			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする(*オペレータ内)
 			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[ t_poldef.c ];
 
-			painter->triangle(t_vert_disp, false, mode_sub);
+			painter->triangle(t_vert_disp, false, frontface);
 		}
 		break;
 	case drawType_flat:
@@ -646,8 +646,10 @@ En_draw_type jhl3Dlib::draw_type_next()
 		draw_type = drawType_vertex;
 		break;
 	default:
-		draw_type = drawType_flat;
+		//		draw_type = drawType_flat;
+		draw_type = drawType_vertex;
 		break;
 	};
+	std::cout << "draw type change to: " << draw_type << std::endl;
 	return draw_type;
 }

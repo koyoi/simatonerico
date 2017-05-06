@@ -70,15 +70,15 @@ class jhl3Dlib
 public:
 	friend disp_base;
 
-	static En_draw_type	draw_type;
 
 	static jhl_rgb		light_ambient;
 	static dir_light	light_directional[2];
 
 private:
+	static En_draw_type	draw_type;
+
 	static viewport_config	vp;
 	static jhl_xy_i			display;
-
 
 	static matHomo4			view_mat;	//	ƒrƒ…[•ÏŠ·(ƒ‚ƒfƒ‹•ÏŠ·‚Í tgtMdl ‚¿)
 	static matHomo4_full	proj_mat;	//	“Š‰e•ÏŠ·
@@ -95,7 +95,12 @@ private:
 
 public:
 //	static void		set_painter(disp_base& p) { painter = &p; };
-	static void		set_painter(disp_ocv2& p) { painter = &p; };	
+	static void		set_painter(disp_ocv2& p) { painter = &p; };
+
+	static void		set_draw_type(::En_draw_type type)
+	{
+		draw_type = type;
+	}
 	
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
