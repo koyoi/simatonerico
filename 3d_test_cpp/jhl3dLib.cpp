@@ -33,17 +33,22 @@ disp_ocv2*		jhl3Dlib::painter;
 //-----------------------------------------------------------
 
 // 表裏判定
-float jhl3Dlib::check_side(int pol_idx)
+//	渡すのははディスプレイ座標
+// カメラの方を向いていると正。
+float jhl3Dlib::check_side(jhl_xyz verts[3])
 {
-	// ポリゴンの頂点 p0,1,2 の作る面ベクトル v1=p1-p0, v2=p2-p0 の法線ベクトルが、視線(＝カメラ変換後なので、[0,0,-1]) と向き合うか？
+	// ポリゴンの頂点 verts[3] の作る面ベクトル v1=p1-p0, v2=p2-p1 の法線ベクトルが、
+	// 視線(＝カメラ変換後なので、[0,0,-1]) と向き合うか？
 	// 最適化済み結果
-	pol_def	pol = tgtMdl->poldef[pol_idx];
-	jhl_xyz p[3];
 
-	p[0] = tgtMdl->vert[pol.a];
-	p[1] = tgtMdl->vert[pol.b];
-	p[2] = tgtMdl->vert[pol.c];
-	return(-((p[1].x - p[0].x)*(p[2].y - p[0].y) - (p[0].x - p[2].x)*(p[1].y - p[0].y)));
+	// jhl_xyz v1 = verts[1] - verts[0];
+	// jhl_xyz v2 = verts[2] - verts[1];
+	float v1_x = verts[1].x - verts[0].x;
+	float v1_y = verts[1].y - verts[0].y;
+	float v2_x = verts[2].x - verts[1].x;
+	float v2_y = verts[2].y - verts[1].y;
+
+	return(-(v1_y*v2_x - v1_x*v2_y));
 }
 
 
@@ -453,6 +458,13 @@ int jhl3Dlib::draw(object& mdl)
 			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする(*オペレータ内)
 			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[ t_poldef.c ];
 
+			if (frontface)
+			{
+				if (jhl3Dlib::check_side(t_vert_disp) < 0)
+				{
+					continue;
+				}
+			}
 			painter->triangle(t_vert_disp, false, frontface);
 		}
 		break;

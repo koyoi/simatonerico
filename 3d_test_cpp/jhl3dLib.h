@@ -97,11 +97,6 @@ public:
 //	static void		set_painter(disp_base& p) { painter = &p; };
 	static void		set_painter(disp_ocv2& p) { painter = &p; };
 
-	static void		set_draw_type(::En_draw_type type)
-	{
-		draw_type = type;
-	}
-	
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
@@ -110,7 +105,8 @@ public:
 
 	static jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
 
-	static float	check_side(int pol_idx);
+	static float	check_side(jhl_xyz verts[3]);
+
 	static jhl_rgb	calc_lighting(int pol_idx);
 
 //	static int		setTgtMdl(modelData* t) { tgtMdl = t; };
@@ -125,6 +121,11 @@ public:
 	static int draw(object& mdl);
 
 	static En_draw_type draw_type_next();
+	static void		set_draw_type(::En_draw_type type)
+	{
+		draw_type = type;
+	}
+
 };
     
 
