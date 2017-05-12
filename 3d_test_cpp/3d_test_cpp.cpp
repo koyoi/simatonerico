@@ -41,6 +41,13 @@ static int proc_key(char);
 static void draw_info();
 
 
+// todo
+int max(int a, int b)
+{
+	return((a > b) ? a : b);
+}
+
+
 // ---------------------------------------------------
 struct sceneObj
 {
@@ -83,9 +90,8 @@ void mat_test(void);
 int
 main(int argc, char *argv[])
 {
-	mat_test();
-
 	unsigned long	frame_time = 300;	// [ms]
+	unsigned int	obj_vertex_size_max = 0;
 
 	jhl3Dlib::set_painter(painter);
 	painter.disp_init(window);	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
@@ -139,12 +145,18 @@ main(int argc, char *argv[])
 		}
 		else
 		{
+			obj_vertex_size_max = max(obj_vertex_size_max, models[i].n_vert);
 			std::cout << "obj id: " << i << std::endl;
 			modelData::dataDump(models[i]);
 			std::cout << std::endl;
 			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
 		}
 	}
+
+	if (!jhl3Dlib::transToDisp_cache_init(obj_vertex_size_max))
+	{
+		std::cout << "vertex trans cache alloc fail ( memory short ). nocache mode." << std::endl;
+	};
 
 	// オブジェクトの位置
 	obj[0].pos = jhl_xyz(0, 0, -5);
@@ -187,9 +199,9 @@ main(int argc, char *argv[])
 	obj[2].obj.color = jhl_rgb(255, 220, 50);
 
 
-	// マウスイベント時に関数mouse_eventの処理を行う
 #ifdef _WIN32_
-	cv::setMouseCallback("img", mouse_event);//   重いし、おかしい？
+	// マウスイベント時に関数mouse_eventの処理を行う
+//	cv::setMouseCallback("img", mouse_event);
 #else
 #endif
 
@@ -241,13 +253,14 @@ main(int argc, char *argv[])
 		painter.disp_clear();
 		int rv;
 		// 実際の描画
-#if 0
+#if 1
 		for (int i = 0; i < NUM_OBJ; i++)
 #else
 		for (int i = 0; i < 1; i++)
 #endif
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
+			jhl3Dlib::transToDisp_cache_clear();
 		}
 
 		// ui
@@ -261,6 +274,7 @@ main(int argc, char *argv[])
 	}
 
 	// 終了　適当だけど
+	jhl3Dlib::transToDisp_cache_deinit();
 	painter.disp_destroy();
 
 	std::cout << "--- end ---" << std::endl;
@@ -407,10 +421,4 @@ mouse_event(int event, int x, int y, int flags, void* param)
 		print("mouse event"):
 	}
 #endif
-}
-
-void mat_test() {
-	// homo4 * homo4
-
-
 }

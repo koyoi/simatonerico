@@ -78,6 +78,7 @@ public:
 	static jhl_rgb		light_ambient;
 	static dir_light	light_directional[2];
 
+
 private:
 	static En_draw_type	draw_type;
 
@@ -129,6 +130,20 @@ public:
 	{
 		draw_type = type;
 	}
+
+private:
+	static jhl_xyz	transToDisp(int vert_idx);
+	static void		set_transToDisp_pObj(jhl_xyz* verts_obj){
+		p_verts = verts_obj;
+	}
+	static jhl_xyz* p_verts;
+	static jhl_xyz* p_TTDcache;
+	static int		TTDcacheSize;
+
+public:
+	static int	transToDisp_cache_init(int cacheSize);
+	static void	transToDisp_cache_clear();
+	static void	transToDisp_cache_deinit();
 
 };
     

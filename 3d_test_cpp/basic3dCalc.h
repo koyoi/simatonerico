@@ -50,7 +50,7 @@ public:
 		return *this;
 	}
 
-	jhl_xyz operator-( const jhl_xyz& rhs) const {
+	jhl_xyz operator-(const jhl_xyz& rhs) const {
 		jhl_xyz t;
 		t.x = x - rhs.x;
 		t.y = y - rhs.y;
@@ -79,7 +79,7 @@ public:
 		z *= rhs.z;
 		return *this;
 	}
-	
+
 	/*	// todo 外積と混乱しそうなので dot とかにする
 	jhl_xyz& operator*=(jhl_xyz rhs) {
 		x *= rhs.x;
@@ -97,11 +97,17 @@ public:
 		return t;
 	}
 
-	jhl_xyz& operator/=( float rhs ) {
+	jhl_xyz& operator/=(float rhs) {
 		x /= rhs;
-		y /= rhs; 
+		y /= rhs;
 		z /= rhs;
 		return *this;
+	}
+
+	bool operator==(jhl_xyz rhs) {
+		return(x == rhs.x &&
+			y == rhs.y &&
+			z == rhs.z) ? true: false;
 	}
 
 	// ベクトルならでは
@@ -637,6 +643,8 @@ public:
 		return t;
 	}
 
+
+	// 同次行列からxyzに
 	jhl_xyz operator*(jhl_xyz rhs) const {
 		jhl_xyz rv;
 		float w;
@@ -644,21 +652,11 @@ public:
 
 		w = m[12] * t.m[0] + m[13] * t.m[1] + m[14] * t.m[2] + m[15] * t.m[3];			// w で割る
 
-		rv.x = (m[0] * t.m[0] + m[1] * t.m[1] + m[2] * t.m[2] + m[3] * t.m[3]) / w;		// 同次行列からxyzに
+		rv.x = (m[0] * t.m[0] + m[1] * t.m[1] + m[2] * t.m[2] + m[3] * t.m[3]) / w;
 		rv.y = (m[4] * t.m[0] + m[5] * t.m[1] + m[6] * t.m[2] + m[7] * t.m[3]) / w;
 		rv.z = (m[8] * t.m[0] + m[9] * t.m[1] + m[10] * t.m[2] + m[11] * t.m[3]) / w;
 		return rv;
 	}
-
-/*
-	operator jhl_xyz() {
-		jhl_xyz t;
-		t.x = m[0] / m[3];
-		t.y = m[1] / m[3];
-		t.z = m[2] / m[3];
-		return t;
-	}
-	*/
 
 	friend std::ostream& operator<< (std::ostream& os, const matHomo4_full& p)
 	{

@@ -12,7 +12,7 @@ https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 
 //-----------------------------------------------------------
 
-En_draw_type	jhl3Dlib::draw_type = drawType_vertex;
+En_draw_type	jhl3Dlib::draw_type = drawType_flat;
 modelData*		jhl3Dlib::tgtMdl;
 jhl_rgb			jhl3Dlib::light_ambient;
 dir_light		jhl3Dlib::light_directional[2];
@@ -30,6 +30,13 @@ matHomo4_full	jhl3Dlib::transMat;
 disp_ocv2*		jhl3Dlib::painter;
 
 
+// ディスプレイ座標への変換に使用(キャッシュ)
+jhl_xyz*		jhl3Dlib::p_TTDcache;
+int				jhl3Dlib::TTDcacheSize;
+jhl_xyz*		jhl3Dlib::p_verts;
+
+int	cache_miss;
+int	cache_total;
 
 //-----------------------------------------------------------
 static void swap(int& a, int& b)
@@ -44,7 +51,7 @@ static float grad(jhl_xyz& p0, jhl_xyz& p1)
 	if ((p1.y - p0.y) == 0)
 	{
 		// 分母ゼロ
-		return(1000);	// todo toria
+		return((p1.x - p0.x) / (0.00001));	// todo toria
 	}
 	else
 	{
@@ -463,6 +470,7 @@ int jhl3Dlib::draw(object& mdl)
 	jhl_xyz	t_vert_disp[3];
 
 	setTransMat( mdl.model_mat );
+	set_transToDisp_pObj(tgtMdl->vert);
 
 	// 色設定 toria
 	if (mdl.attrib_override)
@@ -482,9 +490,10 @@ int jhl3Dlib::draw(object& mdl)
 	switch ( jhl3Dlib::draw_type )
 	{
 	case drawType_vertex:
+
 		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
-			t_vert_disp[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
+			t_vert_disp[0] = transToDisp( i );
 			painter->point(t_vert_disp[0]);
 //			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
@@ -497,9 +506,9 @@ int jhl3Dlib::draw(object& mdl)
 			t_poldef = tgtMdl->poldef[i];
 			p_vert = tgtMdl->vert;
 
-			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[ t_poldef.a ];	// todo キャッシュ
-			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする(*オペレータ内)
-			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[ t_poldef.c ];
+			t_vert_disp[0] = transToDisp( t_poldef.a );
+			t_vert_disp[1] = transToDisp( t_poldef.b );
+			t_vert_disp[2] = transToDisp( t_poldef.c );
 
 			if( jhl3Dlib::draw_type != drawType_line )
 			{
@@ -524,9 +533,9 @@ int jhl3Dlib::draw(object& mdl)
 			t_poldef = tgtMdl->poldef[i];
 			p_vert = tgtMdl->vert;
 
-			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[t_poldef.a];	// todo キャッシュ
-			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[t_poldef.b];
-			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[t_poldef.c];
+			t_vert_disp[0] = transToDisp(t_poldef.a);
+			t_vert_disp[1] = transToDisp(t_poldef.b);
+			t_vert_disp[2] = transToDisp(t_poldef.c);
 
 			// 裏面ならスキップ
 			if (jhl3Dlib::check_side(t_vert_disp) < 0)
@@ -561,9 +570,6 @@ int jhl3Dlib::draw(object& mdl)
 					temp_x01 += delta_x01;
 					temp_x02 += delta_x02;
 				}
-				std::cout << "|" << std::endl;
-
-				painter->set_lineColor(jhl_rgb(250,0,200));	// シーンのモデル設定に設定してある属性
 
 				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y; y++)
 				{
@@ -668,3 +674,65 @@ En_draw_type jhl3Dlib::draw_type_next()
 	return draw_type;
 }
 
+
+// もう一枚かぶせたい？
+// todo キャッシュのフラッシュのタイミング。
+// 同一フレーム内などで、同じモデルを何インスタンスも描画するときとか。
+jhl_xyz jhl3Dlib::transToDisp(int vert_idx)
+{
+	if (p_TTDcache == NULL)
+	{
+		return(transMat * p_verts[vert_idx]);	// キャッシュ未初期化 / 未使用
+	}
+
+	if( p_TTDcache[vert_idx] == jhl_xyz(0) )
+	{
+		p_TTDcache[vert_idx] = transMat * p_verts[vert_idx];
+		cache_miss++;
+	}
+	cache_total++;
+	return(p_TTDcache[vert_idx]);
+}
+
+
+int jhl3Dlib::transToDisp_cache_init(int cacheSize)
+{
+	TTDcacheSize = cacheSize;
+	p_TTDcache = new jhl_xyz[cacheSize]();
+	if (p_TTDcache == NULL)
+	{
+		return 0;
+	}
+	else
+	{
+		transToDisp_cache_clear();
+		return 1;
+	}
+}
+
+void jhl3Dlib::transToDisp_cache_deinit()
+{
+	if (p_TTDcache != NULL)
+	{
+		delete[] p_TTDcache;
+		p_TTDcache = NULL;
+	}
+}
+
+void jhl3Dlib::transToDisp_cache_clear()
+{
+	if (p_TTDcache == NULL)
+	{
+		return;
+	}
+
+	// 配列だけど、アラインメントの都合でmemsetする前に実際に塗らなくてはならないサイズを算出
+	// 無駄？（中でやってる？）
+	jhl_xyz* tbl2 = p_TTDcache;
+	tbl2++;
+	int stride = (int)tbl2 - (int)p_TTDcache;
+
+	memset(p_TTDcache, 0, stride * TTDcacheSize);
+	cache_total = 0;
+	cache_miss = 0;
+}
