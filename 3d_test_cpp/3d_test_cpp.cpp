@@ -154,10 +154,10 @@ main(int argc, char *argv[])
 //	obj[0].trans.rot_axis_z(0.4f);
 //	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
 	obj[0].acc = 1;
-	obj[0].acc.rot_axis_x(0.5f/3.14);	// 関数正しくない
+	obj[0].acc.rot_axis_x(0.5f/3.14);
 //	obj[0].acc.rot_axis_y(0.3f/3.14);
 //	obj[0].acc.rot_axis_z(0.2f/3.14);
-//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.8f);
+	obj[0].acc.rot_by_vec( jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.2f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
 	obj[0].size = 1;
 //	obj[0].size *= jhl_size(1, 2, 3);
 	obj[0].is_moved = true;

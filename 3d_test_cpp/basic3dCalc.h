@@ -110,6 +110,10 @@ public:
 		return sqrtf(x * x + y * y + z * z);
 	}
 
+	jhl_xyz normalize() {
+		return( jhl_xyz(x,y,z) / norm() );
+	}
+
 	// 内積
 	float dot(jhl_xyz b) {
 		return x * b.x + y * b.y + z * b.z;
@@ -321,14 +325,14 @@ public:
 		0, (float)1, 0,
 		0, 0, (float)1 }
 	{};
-	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c)	// ３つの縦ベクトルから作る
+	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c)	// ３つの縦ベクトルから作る。視線ベクトルくらい
 		:m{
 		a.x, b.x, c.x,
 		a.y, b.y, c.y,
 		a.z, b.z, c.z},
 		v{0}
 	{};
-	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c, jhl_xyz d)	// 4つの縦ベクトルから作る
+	matHomo4(jhl_xyz a, jhl_xyz b, jhl_xyz c, jhl_xyz d)	// 4つの縦ベクトルから作る。ビューマトリクス専用
 		:m{
 		a.x, b.x, c.x,
 		a.y, b.y, c.y,
@@ -379,27 +383,33 @@ public:
 	}
 
 	// todo ここから
-	void rot_axis_x(float rad) { // a[rad]
-		m[3 * 1 + 1] = cos(rad);
-		m[3 * 1 + 2] = -sin(rad);
-		m[3 * 2 + 1] = sin(rad);
-		m[3 * 2 + 2] = cos(rad);
+	void rot_axis_x(float rad) {
+		matHomo4 r(1);
+		r.m[3 * 1 + 1] = cos(rad);
+		r.m[3 * 1 + 2] = -sin(rad);
+		r.m[3 * 2 + 1] = sin(rad);
+		r.m[3 * 2 + 2] = cos(rad);
+		*this = r * (*this);
 	}
 
 	void rot_axis_y(float rad)
 	{
-		m[3 * 0 + 0] = cos(rad);
-		m[3 * 0 + 2] = sin(rad);
-		m[3 * 2 + 0] = -sin(rad);
-		m[3 * 2 + 2] = cos(rad);
+		matHomo4 r(1);
+		r.m[3 * 0 + 0] = cos(rad);
+		r.m[3 * 0 + 2] = sin(rad);
+		r.m[3 * 2 + 0] = -sin(rad);
+		r.m[3 * 2 + 2] = cos(rad);
+		*this = r * (*this);
 	}
 
 	void rot_axis_z(float rad)
 	{
-		m[3 * 0 + 0] = cos(rad);
-		m[3 * 0 + 1] = -sin(rad);
-		m[3 * 1 + 0] = sin(rad);
-		m[3 * 1 + 1] = cos(rad);
+		matHomo4 r(1);
+		r.m[3 * 0 + 0] = cos(rad);
+		r.m[3 * 0 + 1] = -sin(rad);
+		r.m[3 * 1 + 0] = sin(rad);
+		r.m[3 * 1 + 1] = cos(rad);
+		*this = r * (*this);
 	}
 
 	// (r, s, t) ベクトルを軸にs[rad]回転
@@ -407,21 +417,30 @@ public:
 	// 単位ベクトルでないと拡縮、回転速度にも掛かる
 	void rot_by_vec(float r, float s, float t, float rad)
 	{
+		matHomo4 tmp(1);
+
 		float cs = cos(rad);
 		float mcs = 1 - cs;
 		float ss = sin(rad);
 		float rmcs = r * mcs;
 		float smcs = s * mcs;
 
-		m[3 * 0 + 0] = r * rmcs + cs;
-		m[3 * 0 + 1] = s * rmcs - t * ss;
-		m[3 * 0 + 2] = t * rmcs + s * ss;
-		m[3 * 1 + 0] = s * rmcs + t * ss;
-		m[3 * 1 + 1] = s * smcs + cs;
-		m[3 * 1 + 2] = t * smcs - r * ss;
-		m[3 * 2 + 0] = t * rmcs - s * ss;
-		m[3 * 2 + 1] = t * smcs + r * ss;
-		m[3 * 2 + 2] = t * t * mcs + cs;
+		tmp.m[3 * 0 + 0] = r * rmcs + cs;
+		tmp.m[3 * 0 + 1] = s * rmcs - t * ss;
+		tmp.m[3 * 0 + 2] = t * rmcs + s * ss;
+		tmp.m[3 * 1 + 0] = s * rmcs + t * ss;
+		tmp.m[3 * 1 + 1] = s * smcs + cs;
+		tmp.m[3 * 1 + 2] = t * smcs - r * ss;
+		tmp.m[3 * 2 + 0] = t * rmcs - s * ss;
+		tmp.m[3 * 2 + 1] = t * smcs + r * ss;
+		tmp.m[3 * 2 + 2] = t * t * mcs + cs;
+
+		*this = tmp * (*this);
+	}
+
+	void rot_by_vec(jhl_xyz v, float rad)
+	{
+		rot_by_vec(v.x, v.y, v.z, rad);
 	}
 
 	matHomo4& operator+=(matHomo4 rhs) {

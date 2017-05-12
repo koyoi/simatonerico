@@ -15,6 +15,8 @@ void disp_base::
 triangle(jhl_xyz verts[3])
 //	渡すアドレスはディスプレイ座標
 {
+	// polyLines, fillPoly() があるけど、今回はこれで
+
 	line(verts[0], verts[1]);
 	line(verts[1], verts[2]);
 	line(verts[0], verts[2]);
