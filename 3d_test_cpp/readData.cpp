@@ -36,11 +36,15 @@ int read_data(modelData& model, std::string filename)
 		}
 		else if (reading_line_buffer[0] == ':')
 		{
-			if (reading_line_buffer == ":vertex")
+			if (reading_line_buffer == ":name")
+			{
+				// todo モデル名　あるとデバッグとか便利かなって
+			}
+			else if (reading_line_buffer == ":vertex")
 			{
 				reading_file >> model.n_vert;
-				model.vert = new jhl_xyz[model.n_vert];
-				if (model.vert == NULL)
+				model.verts = new jhl_xyz[model.n_vert];
+				if (model.verts == NULL)
 				{
 					std::cout << "buff allocate failed" << std::endl;
 					return 0;
@@ -48,7 +52,7 @@ int read_data(modelData& model, std::string filename)
 
 				for ( int cnt_vert = 0; cnt_vert< model.n_vert; cnt_vert++ )
 				{
-					reading_file >> model.vert[cnt_vert].x >> delimiter >> model.vert[cnt_vert].y >> delimiter >> model.vert[cnt_vert].z;
+					reading_file >> model.verts[cnt_vert].x >> delimiter >> model.verts[cnt_vert].y >> delimiter >> model.verts[cnt_vert].z;
 				}
 			}
 

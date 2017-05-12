@@ -13,3 +13,10 @@
 
 
 // TODO: プログラムに必要な追加ヘッダーをここで参照してください
+#ifdef _WIN32_
+#include "windows.h"
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#endif
+

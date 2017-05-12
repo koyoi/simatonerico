@@ -15,7 +15,7 @@ https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 En_draw_type	jhl3Dlib::draw_type = drawType_flat;
 modelData*		jhl3Dlib::tgtMdl;
 jhl_rgb			jhl3Dlib::light_ambient;
-dir_light		jhl3Dlib::light_directional[2];
+dir_light		jhl3Dlib::light_directional[NUM_DIR_LIGHT];
 
 jhl_xy_i		jhl3Dlib::display;
 viewport_config	jhl3Dlib::vp;
@@ -30,10 +30,10 @@ matHomo4_full	jhl3Dlib::transMat;
 disp_ocv2*		jhl3Dlib::painter;
 
 
-// ディスプレイ座標への変換に使用(キャッシュ)
+// ディスプレイ座標への変換に使用(キャッシュなど)
 jhl_xyz*		jhl3Dlib::p_TTDcache;
 int				jhl3Dlib::TTDcacheSize;
-jhl_xyz*		jhl3Dlib::p_verts;
+char*			jhl3Dlib::mdl_name;
 
 int	cache_miss;
 int	cache_total;
@@ -51,6 +51,7 @@ static float grad(jhl_xyz& p0, jhl_xyz& p1)
 	if ((p1.y - p0.y) == 0)
 	{
 		// 分母ゼロ
+		std::cout << "div by zero!" << std::endl;
 		return((p1.x - p0.x) / (0.00001));	// todo toria
 	}
 	else
@@ -84,7 +85,7 @@ static void sort_y( jhl_xyz* points, int* y_sort )
 // 表裏判定
 //	渡すのははディスプレイ座標
 // カメラの方を向いていると正。
-float jhl3Dlib::check_side(jhl_xyz verts[3])
+float jhl3Dlib::check_side(jhl_xyz* verts)
 {
 	// ポリゴンの頂点 verts[3] の作る面ベクトル v1=p1-p0, v2=p2-p1 の法線ベクトルが、
 	// 視線(＝カメラ変換後なので、[0,0,-1]) と向き合うか？
@@ -103,27 +104,28 @@ float jhl3Dlib::check_side(jhl_xyz verts[3])
 
 
 // あたる光の色を計算
+// 	set_tgt_pObj(tgtMdl->verts);	// 後々の計算をモデル.ポリゴン番号 だけで引けるように
+// で対象のモデルがセット済みであること。todo 確認出来るように
 // 引数は各頂点の座標
 // 環境光＋平行光(面との内積を取る)。返値と、面の色を掛けて
-jhl_rgb jhl3Dlib::calc_lighting(int pol_idx)
+jhl_rgb jhl3Dlib::calc_lighting(pol_def* pol)
 {
-	pol_def	pol = tgtMdl->poldef[pol_idx];
 	jhl_xyz p[3];
 
 	jhl_rgb rv = light_ambient;
 
-	jhl_xyz v1 = p[1] - p[0];
-	jhl_xyz v2 = p[2] - p[0];
-	jhl_xyz n = v1*v2;	// ベクトル積
-	n /= n.norm();
+	// 注目のポリゴンの法線
+	jhl_xyz v1 = tgtMdl->verts[ pol->b ] - tgtMdl->verts[ pol->a ];
+	jhl_xyz v2 = tgtMdl->verts[ pol->c ] - tgtMdl->verts[ pol->b ];
+	jhl_xyz n = v1 * v2;	// ベクトル積
+	n = n.normalize();
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < NUM_DIR_LIGHT; i++)
 	{
-		float e = -n.dot(light_directional[i].dir);
-		if (e > 0)
+		float coeff = -n.dot(light_directional[i].dir);
+		if (coeff > 0)
 		{
-			//        print(" add light ", 1.*e*l[1])
-			rv += light_directional[i].col * e;
+			rv += light_directional[i].col * coeff;
 		}
 	}
 	return (rv);
@@ -269,7 +271,7 @@ mat_disp_proj:matrix([mt00,0,mt02,mt03],[0,mt11,mt12,mt13],[0,0,mt22,mt23],[0,0,
 mat:mat_disp_proj.mat_model_view;
 result:mat.point1;
 */
-void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
+void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 {
 	matHomo4 m_model_view = view_mat*mdl_mat;	// mview x trans モデルビュー変換
 
@@ -277,7 +279,7 @@ void jhl3Dlib::setTransMat(matHomo4 & mdl_mat)
 	matHomo4_full m_proj_disp = proj_mat * disp_mat;
 //	std::cout << "a:" << std::endl << m_proj_disp << std::endl;
 #else	// 書き下し
-	matHomo4_full	m_proj_disp = proj_mat;	// todo 実はゼロ多い
+	matHomo4_full	m_proj_disp = proj_mat;	// todo 実はゼロ多い...なんでコピーしてるんだっけ
 	m_proj_disp.m[0 * 4 + 0] *= display.x;
 	m_proj_disp.m[1 * 4 + 1] *= display.y;
 	m_proj_disp.m[0 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.x;
@@ -416,7 +418,7 @@ void modelData::dataDump(modelData& mdl, bool detail)
 		jhl_xyz* t;
 		for (int i = 0; i < mdl.n_vert; i++)
 		{
-			t = &mdl.vert[i];
+			t = &mdl.verts[i];
 			cout << i << ": ( " << t->x << ", " << t->y << ", " << t->z << " )" << endl;
 		}
 	}
@@ -462,15 +464,14 @@ void modelData::dataDump(modelData& mdl, bool detail)
 
 
 
-int jhl3Dlib::draw(object& mdl)
+int jhl3Dlib::draw(const object& mdl)
 {
 	int rv = 0;
-	tgtMdl = mdl.p_model;
+	jhl3Dlib::tgtMdl = mdl.p_model;	// setTgt() みたいにした方が明示的に分かる？　別名つけただけでしかないけど...
 
-	jhl_xyz	t_vert_disp[3];
+	jhl_xyz	t_vert_disp[3];			// ディスプレイ座標へ変換後の座標（ただし、まだfloat,z(zは正規化状態)も持ってる）
 
-	setTransMat( mdl.model_mat );
-	set_transToDisp_pObj(tgtMdl->vert);
+	setTransMat( mdl.model_mat );	// モデルビュー変換～ディスプレイ座標変換まで一気にセット
 
 	// 色設定 toria
 	if (mdl.attrib_override)
@@ -484,7 +485,7 @@ int jhl3Dlib::draw(object& mdl)
 		painter->set_fillColor(tgtMdl->attr[0].color);	// todo fillcolor
 	}
 
-	pol_def t_poldef;
+	pol_def* t_poldef;
 	jhl_xyz* p_vert;
 
 	switch ( jhl3Dlib::draw_type )
@@ -503,16 +504,16 @@ int jhl3Dlib::draw(object& mdl)
 	case drawType_line_front_face:	// ワイヤフレーム（裏面消去あり)
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
-			t_poldef = tgtMdl->poldef[i];
-			p_vert = tgtMdl->vert;
+			t_poldef = &tgtMdl->poldef[i];
+			p_vert = tgtMdl->verts;
 
-			t_vert_disp[0] = transToDisp( t_poldef.a );
-			t_vert_disp[1] = transToDisp( t_poldef.b );
-			t_vert_disp[2] = transToDisp( t_poldef.c );
+			t_vert_disp[0] = transToDisp( t_poldef->a );
+			t_vert_disp[1] = transToDisp( t_poldef->b );
+			t_vert_disp[2] = transToDisp( t_poldef->c );
 
-			if( jhl3Dlib::draw_type != drawType_line )
+			if( draw_type != drawType_line )	// 隠面消去有効無効分岐はここ
 			{
-				if (jhl3Dlib::check_side(t_vert_disp) < 0)
+				if ( check_side(t_vert_disp) < 0)
 				{
 					// 裏面。スキップ
 					continue;
@@ -522,29 +523,32 @@ int jhl3Dlib::draw(object& mdl)
 		}
 	break;
 
-	case drawType_flat:				// 単色ポリゴン（平行光源１のみ、暗黙に裏面除外）;
+	case drawType_flat:				// 単色ポリゴン（光源無視、暗黙に裏面除外）;
 	{
 		int	y_sort[3] = { 0,1,2 };
 
-		p_vert = tgtMdl->vert;
+		p_vert = tgtMdl->verts;
 
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
-			t_poldef = tgtMdl->poldef[i];
-			p_vert = tgtMdl->vert;
+			t_poldef = &tgtMdl->poldef[i];
+			p_vert = tgtMdl->verts;
 
-			t_vert_disp[0] = transToDisp(t_poldef.a);
-			t_vert_disp[1] = transToDisp(t_poldef.b);
-			t_vert_disp[2] = transToDisp(t_poldef.c);
+			t_vert_disp[0] = transToDisp(t_poldef->a);
+			t_vert_disp[1] = transToDisp(t_poldef->b);
+			t_vert_disp[2] = transToDisp(t_poldef->c);
 
 			// 裏面ならスキップ
-			if (jhl3Dlib::check_side(t_vert_disp) < 0)
+			if (check_side(t_vert_disp) < 0)
 			{
 				continue;
 			}
 
+			// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
+			calc_lighting(t_poldef);
+
 			// 1) ポリゴン頂点の画面上yソート
-			sort_y(t_vert_disp, y_sort);
+			sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
 
 			// 2) y最小 から2つに点へ引く直線の式...　line()内で実装されてるんだろうけど
 			//    yの画面上の方から走査
@@ -557,10 +561,10 @@ int jhl3Dlib::draw(object& mdl)
 				float delta_x12 = grad(t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
 				float temp_x01 = t_vert_disp[y_sort[0]].x;
 				float temp_x02 = t_vert_disp[y_sort[0]].x;
-				float temp_x12  = t_vert_disp[y_sort[1]].x;
+				float temp_x12 = t_vert_disp[y_sort[1]].x;
 
-				// todo はみ出しクリップ
-				for (int y = t_vert_disp[y_sort[0]].y; y < t_vert_disp[y_sort[1]].y; y++)
+				// todo はみ出しクリップ、いい丸め　単純なint cast はよくない
+				for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
 				{
 //					std::cout << "y: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
 //					painter->point(jhl_xy_i(temp_x01, y), 0);
@@ -641,10 +645,16 @@ int jhl3Dlib::draw(object& mdl)
 								else:
 #endif
 	}
-	case drawType_flat_z:				// 単色ポリゴン（平行光源１のみ、暗黙に裏面除外）;
+	case drawType_flat_z:				// 単色ポリゴン（光源あり、暗黙に裏面除外）;
 		break;
 	case drawType_flat_lighting:				// 単色ポリゴン（光源あり）;
 //		break;
+#if 0
+	case drawType_phong:				// フォンシェーディング
+		各頂点の法線 ≡ その頂点を共有する全ポリゴンの法線の平均
+		モデル読み込み時、またはアニメーション時にあらかじめ計算しておくべきだろう
+			hwではどうしてるんだろう？
+#endif
 	default:
 		break;
 	}
@@ -677,17 +687,18 @@ En_draw_type jhl3Dlib::draw_type_next()
 
 // もう一枚かぶせたい？
 // todo キャッシュのフラッシュのタイミング。
+// todo 実は計算量少ない機が…特に最近のDSP命令あったら　オーバーヘッドが大きいかも？
 // 同一フレーム内などで、同じモデルを何インスタンスも描画するときとか。
 jhl_xyz jhl3Dlib::transToDisp(int vert_idx)
 {
 	if (p_TTDcache == NULL)
 	{
-		return(transMat * p_verts[vert_idx]);	// キャッシュ未初期化 / 未使用
+		return(transMat * tgtMdl->verts[vert_idx]);	// キャッシュ未初期化 / 未使用
 	}
 
 	if( p_TTDcache[vert_idx] == jhl_xyz(0) )
 	{
-		p_TTDcache[vert_idx] = transMat * p_verts[vert_idx];
+		p_TTDcache[vert_idx] = transMat * tgtMdl->verts[vert_idx];
 		cache_miss++;
 	}
 	cache_total++;

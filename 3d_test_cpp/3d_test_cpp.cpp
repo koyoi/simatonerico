@@ -2,13 +2,14 @@
 
 #ifdef _WIN32_
 #include "windows.h"
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #endif
 
 
 #include <iostream>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 #include "jhl3dLib.h"
 #include "readData.h"
@@ -41,8 +42,8 @@ static int proc_key(char);
 static void draw_info();
 
 
-// todo
-int max(int a, int b)
+// todo 
+inline int max(int a, int b)
 {
 	return((a > b) ? a : b);
 }
@@ -84,13 +85,10 @@ modelData	models[NUM_MODEL];	//	ポリゴンモデルそのものと、それに適用するアフィン
 sceneObj	obj[NUM_OBJ];		//	位置・回転、速度その他諸々
 
 
-void mat_test(void);
-
-
 int
 main(int argc, char *argv[])
 {
-	unsigned long	frame_time = 300;	// [ms]
+	unsigned long	frame_time = 100;	// [ms]
 	unsigned int	obj_vertex_size_max = 0;
 
 	jhl3Dlib::set_painter(painter);
@@ -169,7 +167,7 @@ main(int argc, char *argv[])
 	obj[0].acc.rot_axis_x(0.5f/3.14);
 //	obj[0].acc.rot_axis_y(0.3f/3.14);
 //	obj[0].acc.rot_axis_z(0.2f/3.14);
-	obj[0].acc.rot_by_vec( jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.2f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
+	obj[0].acc.rot_by_vec( jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
 	obj[0].size = 1;
 //	obj[0].size *= jhl_size(1, 2, 3);
 	obj[0].is_moved = true;
@@ -184,14 +182,16 @@ main(int argc, char *argv[])
 //	obj[1].acc.rot_axis_x(0.2f);
 	obj[1].acc.rot_axis_y((float)0.3f/3.14);
 //	obj[1].acc.rot_axis_z(0.4f);
+	obj[1].acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
 	obj[1].is_moved = true;
 	obj[1].obj.p_model = &models[1];
 
 	obj[2].pos = jhl_xyz(-2, 4, -15);
 	obj[2].trans = 1;
 	obj[2].acc = 1;
-	obj[2].acc.rot_axis_x((float)(0.25f / 3.14));
+//	obj[2].acc.rot_axis_x((float)(0.25f / 3.14));
 	//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	obj[2].acc.rot_by_vec(jhl_xyz(0.3f, 0.1f, 0.9f).normalize(), 0.05f);
 	obj[2].size = 1.5;
 	//	obj[2].size *= jhl_size(1, 2, 3);
 	obj[2].obj.p_model = &models[0];

@@ -8,6 +8,7 @@
 
 //#define DISP_MAT_KAKIKUDASHI
 
+#define NUM_DIR_LIGHT	2
 
 
 struct viewport_config {
@@ -24,8 +25,11 @@ enum En_draw_type {
 	drawType_flat,
 	drawType_flat_lighting,
 	drawType_flat_z,
-//	drawType_flat_z_lighting,
-	drawType_max_,
+/* 将来実装
+		drawType_flat_z_lighting,
+		drawType_phong,
+*/
+drawType_max_,
 };
 
 
@@ -48,7 +52,7 @@ public:
 
 public:
 	int			n_vert;
-	jhl_xyz*	vert;	// vert は配列のつもりなのだが、これでいいらしい
+	jhl_xyz*	verts;	// vert は配列のつもりなのだが、これでいいらしい
 	int			n_pol;
 	pol_def*	poldef;
 	int			n_group;
@@ -106,13 +110,13 @@ public:
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
 
-	static void		setTransMat(matHomo4& mdl_mat);
+	static void		setTransMat(const matHomo4& mdl_mat);
 
 	static jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
 
-	static float	check_side(jhl_xyz verts[3]);
+	static float	check_side(jhl_xyz* verts);
 
-	static jhl_rgb	calc_lighting(int pol_idx);
+	static jhl_rgb	calc_lighting(pol_def* pol);
 
 //	static int		setTgtMdl(modelData* t) { tgtMdl = t; };
 
@@ -123,7 +127,7 @@ public:
 		}
 	}
 
-	static int draw(object& mdl);
+	static int draw(const object& mdl);
 
 	static En_draw_type draw_type_next();
 	static void		set_draw_type(::En_draw_type type)
@@ -133,12 +137,9 @@ public:
 
 private:
 	static jhl_xyz	transToDisp(int vert_idx);
-	static void		set_transToDisp_pObj(jhl_xyz* verts_obj){
-		p_verts = verts_obj;
-	}
-	static jhl_xyz* p_verts;
 	static jhl_xyz* p_TTDcache;
 	static int		TTDcacheSize;
+	static	char*	mdl_name;
 
 public:
 	static int	transToDisp_cache_init(int cacheSize);

@@ -388,7 +388,6 @@ public:
 		m[3 * 2 + 2] *= sz;
 	}
 
-	// todo Ç±Ç±Ç©ÇÁ
 	void rot_axis_x(float rad) {
 		matHomo4 r(1);
 		r.m[3 * 1 + 1] = cos(rad);
@@ -569,7 +568,6 @@ public:
 	};
 
 	void show() {
-		// todo èëÇ´íºÇµ
 		std::cout << std::endl;
 		std::cout << "[ " << m[0] << ", \t" << m[1] << ", \t" << m[2] << ", \t" << v[0] << std::endl;
 		std::cout << "  " << m[3] << ", \t" << m[4] << ", \t" << m[5] << ", \t" << v[1] << std::endl;
@@ -668,7 +666,6 @@ public:
 	};
 
 	void show() {
-		// todo èëÇ´íºÇµ
 		std::cout << "[ " << m[ 0] << ", \t" << m[ 1] << ", \t" << m[ 2] << ", \t" << m[ 3] << std::endl;
 		std::cout << "  " << m[ 4] << ", \t" << m[ 5] << ", \t" << m[ 6] << ", \t" << m[ 7] << std::endl;
 		std::cout << "  " << m[ 8] << ", \t" << m[ 9] << ", \t" << m[10] << ", \t" << m[11] << std::endl;
