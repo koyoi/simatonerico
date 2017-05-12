@@ -21,7 +21,11 @@ enum En_draw_type {
 	drawType_vertex,
 	drawType_line,
 	drawType_line_front_face,
-	drawType_flat
+	drawType_flat,
+	drawType_flat_lighting,
+	drawType_flat_z,
+//	drawType_flat_z_lighting,
+	drawType_max_,
 };
 
 

@@ -7,11 +7,6 @@
 // http://www.hiramine.com/programming/c_cpp/operator.html
 
 
-// ç¿ïW
-struct jhl_xy {
-	float x;
-	float y;
-};
 
 class jhl_xy_i {
 public:
@@ -20,13 +15,16 @@ public:
 
 public:
 	jhl_xy_i() {};
-	jhl_xy_i(int x_, int y_) :x(x_), y(y_) {};
+	jhl_xy_i(int x_, int y_) :
+		x(x_), y(y_)
+	{};
+
 	jhl_xy_i operator/(int div) const {
 		jhl_xy_i t;
 		t.x = x / div;
 		t.y = y / div;
 		return t;
-	}
+	};
 };
 
 
@@ -152,10 +150,30 @@ public:
 
 	friend std::ostream& operator<< (std::ostream& os, const jhl_xyz& p)
 	{
-		os << "[ " << p.x << ", \t" << p.y << ", \t" << p.z << "]" << std::endl;
+		os << "[ " << p.x << ", \t" << p.y << ", \t" << p.z << "]";
 		return os;
 	};
 };
+
+
+// ç¿ïW
+class jhl_xy {
+public:
+	float x;
+	float y;
+
+public:
+	jhl_xy() {};
+	jhl_xy(float _x, float _y) :
+		x(_x),
+		y(_y)
+	{};
+	jhl_xy(jhl_xyz _v) :
+		x(_v.x),
+		y(_v.y)
+	{};
+};
+
 
 class jhl_size {
 public:

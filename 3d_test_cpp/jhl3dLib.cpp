@@ -30,6 +30,48 @@ matHomo4_full	jhl3Dlib::transMat;
 disp_ocv2*		jhl3Dlib::painter;
 
 
+
+//-----------------------------------------------------------
+static void swap(int& a, int& b)
+{
+	int t = a;
+	a = b;
+	b = t;
+}
+
+static float grad(jhl_xyz& p0, jhl_xyz& p1)
+{
+	if ((p1.y - p0.y) == 0)
+	{
+		// 分母ゼロ
+		return(1000);	// todo toria
+	}
+	else
+	{
+		return((p1.x - p0.x) / (p1.y - p0.y));
+	}
+}
+
+static void sort_y( jhl_xyz* points, int* y_sort )
+{
+	if (points[y_sort[1]].y > points[y_sort[2]].y)
+	{
+		swap(y_sort[1], y_sort[2]);		// y_sort[] の中身は都度初期化しないでいいのだ
+	}
+	if (points[y_sort[0]].y > points[y_sort[1]].y)
+	{
+		swap(y_sort[0], y_sort[1]);
+	}
+	if (points[y_sort[1]].y > points[y_sort[2]].y)
+	{
+		swap(y_sort[1], y_sort[2]);
+	}
+//	std::cout << points[0] << " , " << points[1] << " , " << points[2] << std::endl;
+//	std::cout << y_sort[0] << " , " << y_sort[1] << " , " << y_sort[2] << std::endl;
+
+}
+
+
 //-----------------------------------------------------------
 
 // 表裏判定
@@ -418,9 +460,7 @@ int jhl3Dlib::draw(object& mdl)
 	int rv = 0;
 	tgtMdl = mdl.p_model;
 
-	jhl_xyz	t_vert[3];
 	jhl_xyz	t_vert_disp[3];
-	bool frontface;
 
 	setTransMat( mdl.model_mat );
 
@@ -428,149 +468,117 @@ int jhl3Dlib::draw(object& mdl)
 	if (mdl.attrib_override)
 	{
 		painter->set_lineColor(mdl.color);	// シーンのモデル設定に設定してある属性
+		painter->set_fillColor(mdl.color);
 	}
 	else
 	{
 		painter->set_lineColor(tgtMdl->attr[0].color);	// 読み込んだモデル定義に定義された色 todo fillcolor
+		painter->set_fillColor(tgtMdl->attr[0].color);	// todo fillcolor
 	}
+
+	pol_def t_poldef;
+	jhl_xyz* p_vert;
 
 	switch ( jhl3Dlib::draw_type )
 	{
 	case drawType_vertex:
 		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
-			t_vert[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
-			painter->point(t_vert[0]);
+			t_vert_disp[0] = jhl3Dlib::transMat * tgtMdl->vert[i];
+			painter->point(t_vert_disp[0]);
 //			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
-
 		break;
 
 	case drawType_line:				// ワイヤフレーム（裏面消去なし)
 	case drawType_line_front_face:	// ワイヤフレーム（裏面消去あり)
-		frontface = (jhl3Dlib::draw_type == drawType_line_front_face ? true : false);
-		pol_def t_poldef;
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
 			t_poldef = tgtMdl->poldef[i];
-			jhl_xyz* p_vert = tgtMdl->vert;
+			p_vert = tgtMdl->vert;
+
 			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[ t_poldef.a ];	// todo キャッシュ
 			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[ t_poldef.b ]; // デバイス座標系に移してからwで割ってるのでおかしい気がする(*オペレータ内)
 			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[ t_poldef.c ];
 
-			if (frontface)
+			if( jhl3Dlib::draw_type != drawType_line )
 			{
 				if (jhl3Dlib::check_side(t_vert_disp) < 0)
 				{
+					// 裏面。スキップ
 					continue;
 				}
 			}
-			painter->triangle(t_vert_disp, false, frontface);
+			painter->triangle(t_vert_disp);
 		}
-		break;
-	case drawType_flat:
-		break;
+	break;
+
+	case drawType_flat:				// 単色ポリゴン（平行光源１のみ、暗黙に裏面除外）;
+	{
+		int	y_sort[3] = { 0,1,2 };
+
+		p_vert = tgtMdl->vert;
+
+		for (int i = 0; i < tgtMdl->n_pol; i++)
+		{
+			t_poldef = tgtMdl->poldef[i];
+			p_vert = tgtMdl->vert;
+
+			t_vert_disp[0] = jhl3Dlib::transMat * p_vert[t_poldef.a];	// todo キャッシュ
+			t_vert_disp[1] = jhl3Dlib::transMat * p_vert[t_poldef.b];
+			t_vert_disp[2] = jhl3Dlib::transMat * p_vert[t_poldef.c];
+
+			// 裏面ならスキップ
+			if (jhl3Dlib::check_side(t_vert_disp) < 0)
+			{
+				continue;
+			}
+
+			// 1) ポリゴン頂点の画面上yソート
+			sort_y(t_vert_disp, y_sort);
+
+			// 2) y最小 から2つに点へ引く直線の式...　line()内で実装されてるんだろうけど
+			//    yの画面上の方から走査
+			{
+//				std::cout << "sorted vetrexes" << std::endl;
+//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
+
+				float delta_x01 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
+				float delta_x02 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+				float delta_x12 = grad(t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
+				float temp_x01 = t_vert_disp[y_sort[0]].x;
+				float temp_x02 = t_vert_disp[y_sort[0]].x;
+				float temp_x12  = t_vert_disp[y_sort[1]].x;
+
+				// todo はみ出しクリップ
+				for (int y = t_vert_disp[y_sort[0]].y; y < t_vert_disp[y_sort[1]].y; y++)
+				{
+//					std::cout << "y: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
+//					painter->point(jhl_xy_i(temp_x01, y), 0);
+//					painter->point(jhl_xy_i(temp_x02, y), 0);
+					painter->line_h(y, temp_x01, temp_x02);
+
+					temp_x01 += delta_x01;
+					temp_x02 += delta_x02;
+				}
+				std::cout << "|" << std::endl;
+
+				painter->set_lineColor(jhl_rgb(250,0,200));	// シーンのモデル設定に設定してある属性
+
+				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y; y++)
+				{
+//					std::cout << "y: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
+//					painter->point(jhl_xy_i(temp_x12, y), 0);
+//					painter->point(jhl_xy_i(temp_x02, y), 0);
+					painter->line_h(y, temp_x12, temp_x02);
+
+					temp_x12 += delta_x12;
+					temp_x02 += delta_x02;
+				}
+			}
+		}
+
 #if 0
-		elif(draw_type == 3) : // 単色ポリゴン（光源あり）;
-			z_min = 255
-			z_max = 0
-			z_calc = 0
-
-			pols_drawn = 0
-			light_color = []
-			for d in polygons :
-		pd0 = points_disp[d[0]] // 今注目しているポリゴンの各頂点   Points_disp[Dn]
-			pd1 = points_disp[d[1]]
-			pd2 = points_disp[d[2]]
-
-
-			// 裏面は描画しない
-			if (check_side((pd0, pd1, pd2)) > 0) :
-				// (視線との角度が必要なら、そのとき... シェーダ案件？)
-				light_color = (calc_lighting((points[d[0]], points[d[1]], points[d[2]]))) * 255
-				light_color_int = (int(light_color[0]), int(light_color[1]), int(light_color[2]))
-				//                light_color_int = map(int, light_color.flatten())
-				//                print("light_color_int", light_color_int)
-				// y ソート（ X方向　･･･VRAM アドレスインクリメントでアクセスしたいため
-				//                print("points_disp")
-				//                for ppp in d :
-				//                    print ppp
-				//                print pd0
-				//                print pd1
-				//                print pd2
-				// todo sorted と言うメソッドがあるぞ
-				if (pd0[1] <= pd1[1] and pd0[1] <= pd2[1]) :
-					idx0 = d[0]
-					if (pd1[1] <= pd2[1]) :
-						idx1 = d[1]
-						idx2 = d[2]
-					else :
-						idx1 = d[2]
-						idx2 = d[1]
-						elif(pd1[1] <= pd0[1] and pd1[1] <= pd2[1]) :
-						idx0 = d[1]
-						if (pd0[1] <= pd2[1]) :
-							idx1 = d[0]
-							idx2 = d[2]
-						else :
-							idx1 = d[2]
-							idx2 = d[0]
-				else:
-		idx0 = d[2]
-			if (pd0[1] <= pd1[1]) :
-				idx1 = d[0]
-				idx2 = d[1]
-			else :
-				idx1 = d[1]
-				idx2 = d[0]
-				//                print("sorted")
-				//                print(idx0, idx1, idx2)
-				//                print(points_disp[idx0], points_disp[idx1], print(points_disp[idx2])
-
-				// ディスプレイ上で一ラインごとに舐める
-				// todo 分母ゼロの対応
-
-				pd0s = points_disp[idx0] // 塗りつぶしの都合で y ソートした    PointsDispSorted
-				pd1s = points_disp[idx1]
-				pd2s = points_disp[idx2]
-
-				a1s = (pd1s[0] - pd0s[0]) / (pd1s[1] - pd0s[1] + 0.00001)   // todo toria ゼロ除算対策
-				a2s = (pd2s[0] - pd0s[0]) / (pd2s[1] - pd0s[1] + 0.00001)
-				a3s = (pd2s[0] - pd1s[0]) / (pd2s[1] - pd1s[1] + 0.00001)
-				//                print("katamuki", a1s, a2s, a3s)
-
-				// p0 - p1 までyを増やしながら、１ラインずつ線を引いて塗る ... zを考えなくていいからいろいろ省略
-				for y_ in range(int(pd0s[1]) + 1, int(pd1s[1])) :
-					x0s = pd0s[0] + a1s * (y_ - pd0s[1])   // pd0s[1] : 初期値
-					x1s = pd0s[0] + a2s * (y_ - pd0s[1])
-					im = cv2.line(im, (int(x0s), y_), (int(x1s), y_), light_color_int, line_width)
-					//                print(",")
-
-					//// ゴミ、はみ出し防止（int丸めのため)
-					x0s = pd1s[0]
-					x1s = pd0s[0] + a2s * (pd1s[1] - pd0s[1])
-					y_ = int(pd1s[1])
-					im = cv2.line(im, (int(x0s), y_), (int(x1s), y_), light_color_int, line_width)
-
-					// p1 - p2 までyを増やしながら、１ラインずつ線を引いて塗る
-					for y_ in range(int(pd1s[1]) + 1, int(pd2s[1])) :
-						x0s = pd1s[0] + a3s * (y_ - pd1s[1])
-						x1s = pd0s[0] + a2s * (y_ - pd0s[1])
-						im = cv2.line(im, (int(x0s), y_), (int(x1s), y_), light_color_int, line_width)
-						//                    img_z = cv2.line(img_z, (int(x0s), y_), (int(x1s), y_), light_color_int[0], line_width)
-
-						// z map 作成 //
-						p0s = points[idx0]
-						p1s = points[idx1]
-						p2s = points[idx2]
-						//                print("triangle_orig")
-						//                print(p0s, ",", ",", p1s, ",", ",", p2s)
-						//                print("triangle_disp")
-						//                print(pd0s, ",", pd1s, ",", pd2s)
-
-						//                print("")
-						//1                print("t0_wari,t0_x,y,z,,t1_wari,t1_x,y,z,, scr_y, scr_x1_t,x2_t")
-
 						// idx0 ～ idx1 の、元座標での t : (1 - t) に分周する点
 						t0s_all = pd1s[1] - pd0s[1]   // スクリーン上でyだけ、走査する（ｘはすぐしたのループ内）
 						t1s_all = pd2s[1] - pd0s[1]   // 正規化空間の中での位置が知るため、スクリーン上でのその点による分割割合が知りたい
@@ -626,6 +634,11 @@ int jhl3Dlib::draw(object& mdl)
 			//        print("// z calc", z_calc)
 								else:
 #endif
+	}
+	case drawType_flat_z:				// 単色ポリゴン（平行光源１のみ、暗黙に裏面除外）;
+		break;
+	case drawType_flat_lighting:				// 単色ポリゴン（光源あり）;
+//		break;
 	default:
 		break;
 	}
@@ -643,25 +656,15 @@ int jhl3Dlib::draw(object& mdl)
 
 En_draw_type jhl3Dlib::draw_type_next()
 {
-	switch (draw_type)
+	if (draw_type < drawType_max_)
 	{
-	case(drawType_vertex):
-		draw_type = drawType_line;
-		break;
-	case(drawType_line):
-		draw_type = drawType_line_front_face;
-		break;
-	case(drawType_line_front_face):
-		draw_type = drawType_flat;
-		break;
-	case(drawType_flat):
-		draw_type = drawType_vertex;
-		break;
-	default:
-		//		draw_type = drawType_flat;
-		draw_type = drawType_vertex;
-		break;
-	};
+		draw_type = (En_draw_type)(draw_type + 1);
+	}
+	else
+	{
+		draw_type = (En_draw_type)0;
+	}
 	std::cout << "draw type change to: " << draw_type << std::endl;
 	return draw_type;
 }
+

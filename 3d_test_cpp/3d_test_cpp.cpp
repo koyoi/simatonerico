@@ -58,7 +58,6 @@ struct sceneObj
 };
 
 
-
 // ---------------------------------------------------
 #define N_PARA_LIGHTS	2
 #define NUM_MODEL	2
@@ -155,10 +154,10 @@ main(int argc, char *argv[])
 //	obj[0].trans.rot_axis_z(0.4f);
 //	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
 	obj[0].acc = 1;
-//	obj[0].acc.rot_axis_x(0.2f);	// 関数正しくない
+	obj[0].acc.rot_axis_x(0.5f/3.14);	// 関数正しくない
 //	obj[0].acc.rot_axis_y(0.3f/3.14);
-	obj[0].acc.rot_axis_z(0.2f/3.14);
-//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+//	obj[0].acc.rot_axis_z(0.2f/3.14);
+//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.8f);
 	obj[0].size = 1;
 //	obj[0].size *= jhl_size(1, 2, 3);
 	obj[0].is_moved = true;
@@ -229,8 +228,6 @@ main(int argc, char *argv[])
 			// ここでは処理不要
 		}
 
-		painter.disp_clear();
-
 		// 時刻更新でのオブジェクト変更だとか
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
@@ -241,9 +238,14 @@ main(int argc, char *argv[])
 			rigid_trans( &obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
 		}
 
+		painter.disp_clear();
 		int rv;
 		// 実際の描画
+#if 0
 		for (int i = 0; i < NUM_OBJ; i++)
+#else
+		for (int i = 0; i < 1; i++)
+#endif
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
 		}

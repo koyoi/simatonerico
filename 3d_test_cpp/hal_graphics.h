@@ -22,14 +22,15 @@ public:
 	virtual void	set_lineColor(jhl_rgb) = 0;
 	virtual void	set_fillColor(jhl_rgb) = 0;
 
+	// ディスプレイ座標を渡す
 	virtual void	point(jhl_xy_i pos, int size = 2) = 0;
-	virtual void	line(jhl_xy_i start, jhl_xy_i end, bool draw_z = 1) = 0;	// このときは既にディスプレイ座標になっているはずなのだ
+	virtual void	line(jhl_xy_i start, jhl_xy_i end) = 0;		
 	virtual void	circle(jhl_xy_i pos, int r, jhl_rgb&, int thickness = 1 ) = 0;
 
-	// 抽象クラスでの実装
+	// todo 抽象クラスでの実装 
 	virtual void	rectangle(jhl_xy_i start, jhl_xy_i end, jhl_rgb& color, int thickness = 1) = 0;	// モデル描画には使わない
-	void	triangle(jhl_xyz verts[3], bool fill = 1, bool front = 1, bool light = 1);
-	virtual void	line_h(float v, float h_start, float h_end) = 0;	// todo 抽象クラスでの実装
+	void	triangle(jhl_xyz verts[3]);
+	virtual void	line_h(float v, float h_start, float h_end) = 0;
 
 	virtual void	putText(const char* s, jhl_xy_i pos, jhl_rgb& color) = 0;
 
