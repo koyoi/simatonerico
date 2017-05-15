@@ -105,17 +105,21 @@ main(int argc, char *argv[])
 	}
 	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : パースあり。
 
-	jhl_rgb		light_ambient = { .15f, .15f, .15f };
-	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
-
 	jhl_rgb		line_color = jhl_rgb(210, 150, 130);	// todo ここ？
 	int			line_width = 1;
 
-	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f);
-	lights[0].col = jhl_rgb(0.f, .7f, .5f);
+	jhl_rgb		light_ambient = { .2f, .2f, .2f };
+	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
-	lights[1].dir = jhl_xyz(0.1f, -.78f, 0.2f);
-	lights[1].col = jhl_rgb(.5f, 0.f, 0.f);
+	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f).normalize();
+	lights[0].col = jhl_rgb(0.0f, 0.0f, 0.8f);
+
+	lights[1].dir = jhl_xyz(0.1f, -1.0f, 0.2f).normalize();
+	lights[1].col = jhl_rgb(0.f, 0.8f, 0.f);
+
+	jhl3Dlib::light_ambient = &light_ambient;
+	jhl3Dlib::light_directional = lights;
+	jhl3Dlib::num_light_dir = N_PARA_LIGHTS;
 
 
 	// ビュー行列生成
@@ -164,7 +168,7 @@ main(int argc, char *argv[])
 //	obj[0].trans.rot_axis_z(0.4f);
 //	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
 	obj[0].acc = 1;
-	obj[0].acc.rot_axis_x(0.5f/3.14);
+	obj[0].acc.rot_axis_x(0.1f/3.14);
 //	obj[0].acc.rot_axis_y(0.3f/3.14);
 //	obj[0].acc.rot_axis_z(0.2f/3.14);
 	obj[0].acc.rot_by_vec( jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
@@ -180,11 +184,13 @@ main(int argc, char *argv[])
 	obj[1].trans = 1;
 	obj[1].acc = matHomo4(1);
 //	obj[1].acc.rot_axis_x(0.2f);
-	obj[1].acc.rot_axis_y((float)0.3f/3.14);
+	obj[1].acc.rot_axis_y((float)0.12f/3.14);
 //	obj[1].acc.rot_axis_z(0.4f);
 	obj[1].acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
 	obj[1].is_moved = true;
 	obj[1].obj.p_model = &models[1];
+	obj[1].obj.attrib_override = true;
+	obj[1].obj.color = jhl_rgb(250, 250, 250);
 
 	obj[2].pos = jhl_xyz(-2, 4, -15);
 	obj[2].trans = 1;

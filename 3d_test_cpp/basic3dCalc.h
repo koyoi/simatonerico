@@ -266,11 +266,23 @@ public:
 		r((float)c[0] / 255), g((float)c[1] / 255), b((float)c[2]/ 255)
 	{}
 
+	jhl_rgb(float a_) :
+		r(a_), g(a_), b(a_)
+	{}
+
 	jhl_rgb operator*(const float rhs) const {
 		jhl_rgb t;
 		t.r = r * rhs;
 		t.g = g * rhs;
 		t.b = b * rhs;
+		return t;
+	}
+
+	jhl_rgb operator*(const jhl_rgb rhs) const {
+		jhl_rgb t = *this;
+		t.r *= rhs.r;
+		t.g *= rhs.g;
+		t.b *= rhs.b;
 		return t;
 	}
 
@@ -498,6 +510,16 @@ public:
 		*this = t;
 		return *this;
 	}
+
+	jhl_xyz operator*(jhl_xyz rhs) const {
+		jhl_xyz rv;
+
+		rv.x = (m[0] * rhs.x + m[1] * rhs.y + m[2] * rhs.z + v[0]);
+		rv.y = (m[3] * rhs.x + m[4] * rhs.y + m[5] * rhs.z + v[1]);
+		rv.z = (m[6] * rhs.x + m[7] * rhs.y + m[8] * rhs.z + v[2]);
+		return rv;
+	}
+
 
 	matHomo4 operator+(matHomo4 rhs) const {
 		matHomo4 t;

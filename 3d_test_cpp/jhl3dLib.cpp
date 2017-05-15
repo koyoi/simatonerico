@@ -14,18 +14,23 @@ https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 
 En_draw_type	jhl3Dlib::draw_type = drawType_flat;
 modelData*		jhl3Dlib::tgtMdl;
-jhl_rgb			jhl3Dlib::light_ambient;
-dir_light		jhl3Dlib::light_directional[NUM_DIR_LIGHT];
+
+jhl_rgb*		jhl3Dlib::light_ambient;
+dir_light*		jhl3Dlib::light_directional;
+int				jhl3Dlib::num_light_dir;
+jhl_rgb			jhl3Dlib::light_calced;		// 有効な全光源と、面の傾きを考えたもの。
 
 jhl_xy_i		jhl3Dlib::display;
 viewport_config	jhl3Dlib::vp;
 
-matHomo4		jhl3Dlib::view_mat;	//	ビュー変換(モデル変換は tgtMdl 持ち)
-matHomo4_full	jhl3Dlib::proj_mat;	//	投影変換
+matHomo4		jhl3Dlib::view_mat;		//	ビュー変換(モデル変換は tgtMdl 持ち)
+matHomo4_full	jhl3Dlib::proj_mat;		//	投影変換
 #ifdef DISP_MAT_KAKIKUDASHI
-matHomo4		jhl3Dlib::disp_mat;	//	ディスプレイ変換
+matHomo4		jhl3Dlib::disp_mat;		//	ディスプレイ変換
 #endif
-matHomo4_full	jhl3Dlib::transMat;
+
+matHomo4 		jhl3Dlib::modelViewMat;	// モデルビュー変換
+matHomo4_full	jhl3Dlib::transMat;		// モデルビュー変換からディスプレイ変換まで含む投影行列（一般名？）
 
 disp_ocv2*		jhl3Dlib::painter;
 
@@ -39,7 +44,7 @@ int	cache_miss;
 int	cache_total;
 
 //-----------------------------------------------------------
-static void swap(int& a, int& b)
+inline static void swap(int& a, int& b)
 {
 	int t = a;
 	a = b;
@@ -106,29 +111,37 @@ float jhl3Dlib::check_side(jhl_xyz* verts)
 // あたる光の色を計算
 // 	set_tgt_pObj(tgtMdl->verts);	// 後々の計算をモデル.ポリゴン番号 だけで引けるように
 // で対象のモデルがセット済みであること。todo 確認出来るように
-// 引数は各頂点の座標
-// 環境光＋平行光(面との内積を取る)。返値と、面の色を掛けて
-jhl_rgb jhl3Dlib::calc_lighting(pol_def* pol)
+// todo 座標系　透視変換前に計算しなくてはならないのでは？
+// 環境光＋平行光(面との内積を取る)。返値と、面の色を掛けてつかう
+//jhl_rgb jhl3Dlib::calc_lighting(pol_def* pol)
+void jhl3Dlib::calc_lighting(pol_def* pol)
 {
 	jhl_xyz p[3];
 
-	jhl_rgb rv = light_ambient;
+//	jhl_rgb rv = *light_ambient;
+	light_calced = *light_ambient;
 
 	// 注目のポリゴンの法線
 	jhl_xyz v1 = tgtMdl->verts[ pol->b ] - tgtMdl->verts[ pol->a ];
 	jhl_xyz v2 = tgtMdl->verts[ pol->c ] - tgtMdl->verts[ pol->b ];
-	jhl_xyz n = v1 * v2;	// ベクトル積
+	
+	jhl_xyz n = modelViewMat * (v1 * v2);	// ベクトル積
 	n = n.normalize();
 
-	for (int i = 0; i < NUM_DIR_LIGHT; i++)
+	for (int i = 0; i < num_light_dir; i++)
 	{
-		float coeff = -n.dot(light_directional[i].dir);
+		float coeff = -n.dot( light_directional[i].dir);	// 当然、裏からの投影は無視
 		if (coeff > 0)
 		{
-			rv += light_directional[i].col * coeff;
+			light_calced += light_directional[i].col * coeff;
 		}
 	}
-	return (rv);
+	
+	// todo toriaezu １でクリップ
+	if( light_calced.r > 1.0f ){  light_calced.r = 1.0f; }
+	if( light_calced.g > 1.0f ){  light_calced.g = 1.0f; }
+	if( light_calced.b > 1.0f ){  light_calced.b = 1.0f; }
+//	return (light_calced);
 }
 
 
@@ -273,13 +286,13 @@ result:mat.point1;
 */
 void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 {
-	matHomo4 m_model_view = view_mat*mdl_mat;	// mview x trans モデルビュー変換
+	modelViewMat = view_mat*mdl_mat;	// mview x trans モデルビュー変換
 
 #ifdef DISP_MAT_KAKIKUDASHI
 	matHomo4_full m_proj_disp = proj_mat * disp_mat;
 //	std::cout << "a:" << std::endl << m_proj_disp << std::endl;
 #else	// 書き下し
-	matHomo4_full	m_proj_disp = proj_mat;	// todo 実はゼロ多い...なんでコピーしてるんだっけ
+	matHomo4_full	m_proj_disp = proj_mat;	// todo 実はゼロ多い... けど、単純全コピーで十分か？
 	m_proj_disp.m[0 * 4 + 0] *= display.x;
 	m_proj_disp.m[1 * 4 + 1] *= display.y;
 	m_proj_disp.m[0 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.x;
@@ -291,11 +304,11 @@ void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 #endif
 
 #if 0
-	 transMat = m_proj_disp * m_model_view;
+	 transMat = m_proj_disp * modelViewMat;
 	 // 
 #else	// 書き下し
 /* maxima code
-#m: m_model_view
+#m: modelViewMat
 #mt : m_proj_disp
 point1:matrix([x,y,z,1]);
 mat_model_view:matrix([m_00,m_01,m_02,v_0],[m_10,m_11,m_12,v_1],[m_20,m_21,m_22,v_2],[0,0,0,1]);
@@ -303,22 +316,22 @@ mat_disp_proj:matrix([mt00,0,mt02,mt03],[0,mt11,mt12,mt13],[0,0,mt22,mt23],[0,0,
 mat:mat_disp_proj.mat_model_view;
 result:mat.point1;
 */
-	transMat.m[0 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 0] * m_proj_disp.m[0 * 4 + 0];
-	transMat.m[0 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 1] * m_proj_disp.m[0 * 4 + 0];
-	transMat.m[0 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[0 * 4 + 2] + m_model_view.m[0 * 3 + 2] * m_proj_disp.m[0 * 4 + 0];
-	transMat.m[0 * 4 + 3] = m_proj_disp.m[0 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[0 * 4 + 0] * m_model_view.v[0] + m_proj_disp.m[0 * 4 + 3];
-	transMat.m[1 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 0] * m_proj_disp.m[1 * 4 + 1];
-	transMat.m[1 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 1] * m_proj_disp.m[1 * 4 + 1];
-	transMat.m[1 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[1 * 4 + 2] + m_model_view.m[1 * 3 + 2] * m_proj_disp.m[1 * 4 + 1];
-	transMat.m[1 * 4 + 3] = m_proj_disp.m[1 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[1 * 4 + 1] * m_model_view.v[1] + m_proj_disp.m[1 * 4 + 3];
-	transMat.m[2 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[2 * 4 + 2];
-	transMat.m[2 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[2 * 4 + 2];
-	transMat.m[2 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[2 * 4 + 2];
-	transMat.m[2 * 4 + 3] = m_proj_disp.m[2 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[2 * 4 + 3];
-	transMat.m[3 * 4 + 0] = m_model_view.m[2 * 3 + 0] * m_proj_disp.m[3 * 4 + 2];
-	transMat.m[3 * 4 + 1] = m_model_view.m[2 * 3 + 1] * m_proj_disp.m[3 * 4 + 2];
-	transMat.m[3 * 4 + 2] = m_model_view.m[2 * 3 + 2] * m_proj_disp.m[3 * 4 + 2];
-	transMat.m[3 * 4 + 3] = m_proj_disp.m[3 * 4 + 2] * m_model_view.v[2] + m_proj_disp.m[3 * 4 + 3]; 
+	transMat.m[0 * 4 + 0] = modelViewMat.m[2 * 3 + 0] * m_proj_disp.m[0 * 4 + 2] + modelViewMat.m[0 * 3 + 0] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 1] = modelViewMat.m[2 * 3 + 1] * m_proj_disp.m[0 * 4 + 2] + modelViewMat.m[0 * 3 + 1] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 2] = modelViewMat.m[2 * 3 + 2] * m_proj_disp.m[0 * 4 + 2] + modelViewMat.m[0 * 3 + 2] * m_proj_disp.m[0 * 4 + 0];
+	transMat.m[0 * 4 + 3] = m_proj_disp.m[0 * 4 + 2] * modelViewMat.v[2] + m_proj_disp.m[0 * 4 + 0] * modelViewMat.v[0] + m_proj_disp.m[0 * 4 + 3];
+	transMat.m[1 * 4 + 0] = modelViewMat.m[2 * 3 + 0] * m_proj_disp.m[1 * 4 + 2] + modelViewMat.m[1 * 3 + 0] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 1] = modelViewMat.m[2 * 3 + 1] * m_proj_disp.m[1 * 4 + 2] + modelViewMat.m[1 * 3 + 1] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 2] = modelViewMat.m[2 * 3 + 2] * m_proj_disp.m[1 * 4 + 2] + modelViewMat.m[1 * 3 + 2] * m_proj_disp.m[1 * 4 + 1];
+	transMat.m[1 * 4 + 3] = m_proj_disp.m[1 * 4 + 2] * modelViewMat.v[2] + m_proj_disp.m[1 * 4 + 1] * modelViewMat.v[1] + m_proj_disp.m[1 * 4 + 3];
+	transMat.m[2 * 4 + 0] = modelViewMat.m[2 * 3 + 0] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 1] = modelViewMat.m[2 * 3 + 1] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 2] = modelViewMat.m[2 * 3 + 2] * m_proj_disp.m[2 * 4 + 2];
+	transMat.m[2 * 4 + 3] = m_proj_disp.m[2 * 4 + 2] * modelViewMat.v[2] + m_proj_disp.m[2 * 4 + 3];
+	transMat.m[3 * 4 + 0] = modelViewMat.m[2 * 3 + 0] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 1] = modelViewMat.m[2 * 3 + 1] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 2] = modelViewMat.m[2 * 3 + 2] * m_proj_disp.m[3 * 4 + 2];
+	transMat.m[3 * 4 + 3] = m_proj_disp.m[3 * 4 + 2] * modelViewMat.v[2] + m_proj_disp.m[3 * 4 + 3]; 
 #endif
 /*
 	std::cout << "model mat" << std::endl;
@@ -333,8 +346,8 @@ result:mat.point1;
  	std::cout << "m_proj_disp" << std::endl;
  	std::cout << m_proj_disp << std::endl;
 
- 	std::cout << "m_model_view (=view_mat * mdl_mat)" << std::endl;
- 	std::cout << m_model_view << std::endl;
+ 	std::cout << "modelViewMat (=view_mat * mdl_mat)" << std::endl;
+ 	std::cout << modelViewMat << std::endl;
 
  	std::cout << "transMat" << std::endl;
  	std::cout << transMat << std::endl;
@@ -466,9 +479,8 @@ void modelData::dataDump(modelData& mdl, bool detail)
 
 int jhl3Dlib::draw(const object& mdl)
 {
-	int rv = 0;
+	int rv = 0;	//	適当
 	jhl3Dlib::tgtMdl = mdl.p_model;	// setTgt() みたいにした方が明示的に分かる？　別名つけただけでしかないけど...
-
 	jhl_xyz	t_vert_disp[3];			// ディスプレイ座標へ変換後の座標（ただし、まだfloat,z(zは正規化状態)も持ってる）
 
 	setTransMat( mdl.model_mat );	// モデルビュー変換～ディスプレイ座標変換まで一気にセット
@@ -486,7 +498,6 @@ int jhl3Dlib::draw(const object& mdl)
 	}
 
 	pol_def* t_poldef;
-	jhl_xyz* p_vert;
 
 	switch ( jhl3Dlib::draw_type )
 	{
@@ -494,8 +505,7 @@ int jhl3Dlib::draw(const object& mdl)
 
 		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
-			t_vert_disp[0] = transToDisp( i );
-			painter->point(t_vert_disp[0]);
+			painter->point( transToDisp(i) );	// 頂点番号でよい
 //			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
 		break;
@@ -505,7 +515,6 @@ int jhl3Dlib::draw(const object& mdl)
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
 			t_poldef = &tgtMdl->poldef[i];
-			p_vert = tgtMdl->verts;
 
 			t_vert_disp[0] = transToDisp( t_poldef->a );
 			t_vert_disp[1] = transToDisp( t_poldef->b );
@@ -523,16 +532,96 @@ int jhl3Dlib::draw(const object& mdl)
 		}
 	break;
 
-	case drawType_flat:				// 単色ポリゴン（光源無視、暗黙に裏面除外）;
+	case drawType_flat:				// 単色ポリゴン（光源無視、暗黙に裏面除外）使い道あるんか
+	case drawType_flat_lighting:	// 単色ポリゴン（光源あり、暗黙に裏面除外）
+		{
+			int	y_sort[3] = { 0,1,2 };
+
+			for (int i = 0; i < tgtMdl->n_pol; i++)
+			{
+				t_poldef = &tgtMdl->poldef[i];
+
+				t_vert_disp[0] = transToDisp(t_poldef->a);
+				t_vert_disp[1] = transToDisp(t_poldef->b);
+				t_vert_disp[2] = transToDisp(t_poldef->c);
+
+				// 裏面ならスキップ
+				if (check_side(t_vert_disp) < 0)
+				{
+					continue;
+				}
+
+				if (draw_type == drawType_flat_lighting)
+				{
+					// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
+					calc_lighting(t_poldef);	// あたってる光の計算のみ。これに色を掛けるのだ
+				}
+				else
+				{
+					light_calced = 1.0f;
+				}
+
+				if (mdl.attrib_override)
+				{
+					painter->set_fillColor(mdl.color * light_calced);
+				}
+				else
+				{
+					painter->set_fillColor(tgtMdl->attr[0].color * light_calced);
+				}
+
+				// 1) ポリゴン頂点の画面上yソート
+				sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
+
+				// 2) y最小 から2つに点へ引く直線の式...　line()内で実装されてるんだろうけど
+				//    yの画面上の方から走査
+				{
+					//				std::cout << "sorted vetrexes" << std::endl;
+					//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
+
+					float delta_x01 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
+					float delta_x02 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+					float delta_x12 = grad(t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
+					float temp_x01 = t_vert_disp[y_sort[0]].x;
+					float temp_x02 = t_vert_disp[y_sort[0]].x;
+					float temp_x12 = t_vert_disp[y_sort[1]].x;
+
+					// todo 最初のラインが欠けるかも
+
+					for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
+					{
+						//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
+						//					painter->point(jhl_xy_i(temp_x01, y), 0);
+						//					painter->point(jhl_xy_i(temp_x02, y), 0);
+						painter->line_h(y, temp_x01, temp_x02);
+
+						temp_x01 += delta_x01;
+						temp_x02 += delta_x02;
+					}
+
+					for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
+					{
+						//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
+						//					painter->point(jhl_xy_i(temp_x12, y), 0);
+						//					painter->point(jhl_xy_i(temp_x02, y), 0);
+						painter->line_h(y, temp_x12, temp_x02);
+
+						temp_x12 += delta_x12;
+						temp_x02 += delta_x02;
+					}
+
+					// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
+				}
+			}
+		}
+
+	case drawType_flat_z:				// 単色ポリゴン、Zあり（光源あり、暗黙に裏面除外）;
 	{
 		int	y_sort[3] = { 0,1,2 };
-
-		p_vert = tgtMdl->verts;
 
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
 			t_poldef = &tgtMdl->poldef[i];
-			p_vert = tgtMdl->verts;
 
 			t_vert_disp[0] = transToDisp(t_poldef->a);
 			t_vert_disp[1] = transToDisp(t_poldef->b);
@@ -545,16 +634,24 @@ int jhl3Dlib::draw(const object& mdl)
 			}
 
 			// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
-			calc_lighting(t_poldef);
+			calc_lighting(t_poldef);	// あたってる光の計算のみ。これに色を掛けるのだ
 
-			// 1) ポリゴン頂点の画面上yソート
-			sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
-
-			// 2) y最小 から2つに点へ引く直線の式...　line()内で実装されてるんだろうけど
-			//    yの画面上の方から走査
+										// 色設定 toria
+			if (mdl.attrib_override)
 			{
-//				std::cout << "sorted vetrexes" << std::endl;
-//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
+				painter->set_fillColor(mdl.color * light_calced);
+			}
+			else
+			{
+				painter->set_fillColor(tgtMdl->attr[0].color * light_calced);
+			}
+
+
+			// ポリゴン頂点、yの小さい方からソート
+			sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
+			{
+				//				std::cout << "sorted vetrexes" << std::endl;
+				//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
 
 				float delta_x01 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
 				float delta_x02 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
@@ -563,29 +660,32 @@ int jhl3Dlib::draw(const object& mdl)
 				float temp_x02 = t_vert_disp[y_sort[0]].x;
 				float temp_x12 = t_vert_disp[y_sort[1]].x;
 
-				// todo はみ出しクリップ、いい丸め　単純なint cast はよくない
+				// todo 最初のラインが欠けるかも
+
 				for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
 				{
-//					std::cout << "y: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
-//					painter->point(jhl_xy_i(temp_x01, y), 0);
-//					painter->point(jhl_xy_i(temp_x02, y), 0);
+					//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
+					//					painter->point(jhl_xy_i(temp_x01, y), 0);
+					//					painter->point(jhl_xy_i(temp_x02, y), 0);
 					painter->line_h(y, temp_x01, temp_x02);
 
 					temp_x01 += delta_x01;
 					temp_x02 += delta_x02;
 				}
 
-				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y; y++)
+				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
 				{
-//					std::cout << "y: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
-//					painter->point(jhl_xy_i(temp_x12, y), 0);
-//					painter->point(jhl_xy_i(temp_x02, y), 0);
+					//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
+					//					painter->point(jhl_xy_i(temp_x12, y), 0);
+					//					painter->point(jhl_xy_i(temp_x02, y), 0);
 					painter->line_h(y, temp_x12, temp_x02);
 
 					temp_x12 += delta_x12;
 					temp_x02 += delta_x02;
 				}
-			}
+
+				// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
+	}
 		}
 
 #if 0
@@ -645,15 +745,16 @@ int jhl3Dlib::draw(const object& mdl)
 								else:
 #endif
 	}
-	case drawType_flat_z:				// 単色ポリゴン（光源あり、暗黙に裏面除外）;
+#if 0
+	case zソート
+#endif
 		break;
-	case drawType_flat_lighting:				// 単色ポリゴン（光源あり）;
-//		break;
 #if 0
 	case drawType_phong:				// フォンシェーディング
 		各頂点の法線 ≡ その頂点を共有する全ポリゴンの法線の平均
 		モデル読み込み時、またはアニメーション時にあらかじめ計算しておくべきだろう
 			hwではどうしてるんだろう？
+		グループごとにnの計算をする(ローカル座標で）
 #endif
 	default:
 		break;
@@ -737,8 +838,8 @@ void jhl3Dlib::transToDisp_cache_clear()
 		return;
 	}
 
-	// 配列だけど、アラインメントの都合でmemsetする前に実際に塗らなくてはならないサイズを算出
-	// 無駄？（中でやってる？）
+	// 配列だけど、アラインメントの都合でmemsetする前に実際にfillするサイズを算出
+	// 無駄？（中でやってる？） // todo もっといい方法
 	jhl_xyz* tbl2 = p_TTDcache;
 	tbl2++;
 	int stride = (int)tbl2 - (int)p_TTDcache;
