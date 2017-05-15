@@ -27,6 +27,8 @@ public:
 	virtual void	line(jhl_xy_i start, jhl_xy_i end) = 0;		
 	virtual void	circle(jhl_xy_i pos, int r, jhl_rgb&, int thickness = 1 ) = 0;
 
+	virtual void	point_z(jhl_xy_i pos, float depth) = 0;
+
 	// 抽象クラスでの実装 
 	virtual void	rectangle(jhl_xy_i start, jhl_xy_i end, jhl_rgb& color, int thickness = 1) = 0;	// モデル描画には使わない
 	void	triangle(jhl_xyz verts[3]);

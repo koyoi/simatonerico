@@ -316,7 +316,7 @@ void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 	 transMat = m_proj_disp * modelViewMat;
 	 // 
 #else	// 書き下し
-/* maxima code
+/* maxima code4
 #m: modelViewMat
 #mt : m_proj_disp
 point1:matrix([x,y,z,1]);
@@ -365,22 +365,65 @@ result:mat.point1;
 
 
 // スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
-// todo １ライン一気版
-jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1)
+jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float wari_, float all, jhl_xyz& p0, jhl_xyz& p1)
 {
 	jhl_xyz rv;
+	if (all == 0)
+	{
+		all = 0.0001f;	// toria ゼロ除算回避
+	}
+
+	float wari = wari_ / all;
 
 	rv.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
 	rv.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * rv.z;
 	rv.y = ((p0.y / p0.z) * (1 - wari) + (p1.y / p1.z) * wari) * rv.z;
+
 	return(rv);
 }
 
+void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1)
+{
+	jhl_xyz rv;
+	// toria
+	jhl_xyz* v_[2];
+
+	if (p0.x > p1.x)
+	{
+		v_[0] = &p1;
+		v_[1] = &p0;
+	}
+	else
+	{
+		v_[1] = &p1;
+		v_[0] = &p0;
+	}
+
+	int x_all = v_[1]->x - v_[0]->x;
+
+	if (x_all == 0)
+	{
+		return;
+	}
+
+	float wari;
+	for (int x = 0; x <= x_all; x++)
+	{
+		wari = (float)x / x_all;
+		rv.z = 1.0f / ((1.0f - wari) / p0.z + wari / p1.z);
+		rv.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * rv.z;
+		rv.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * rv.z;
+
+		painter->point_z(jhl_xy_i(v_[0]->x +x, v_[0]->y), rv.z );
+	}
+
+	return;
+}
 
 #if 0
 
 
-// 透視深度（？）
+// 透視深度、使わない？
 // Zやテクスチャ座標を計算するのに使う
 jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 {
@@ -396,94 +439,7 @@ jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 }
 
 
-// ポイントに透視変換までの変換を適用
-void jhl3Dlib::trans_vec(points, w) {
-	dest = []
-		for v in points :
-	temp = v[:]     // deep copy
-		temp.append(1.)
-		temp_w = np.ravel(w.dot(temp))
-		if (temp_w[3] != 0) :
-			x = temp_w[0] / temp_w[3]
-			y = temp_w[1] / temp_w[3]
-			z = temp_w[2] / temp_w[3]
-			dest.append((x, y, z))
-		else:
-	print("w == 0 !!!")
-		return dest
-}
-
-
-
-
-// 透視変換後のを入れて、ディスプレイ座標へ変換
-void  	jhl3Dlib::trans_disp(points)
-{
-	temp = np.matrix([0., 0, 0, 0])
-		dest = []
-		for p in points :
-	temp[0, 0:3] = p[0:3]
-		temp[0, 3] = 1
-		dest.append(((viewport_trans.dot(temp.T)).T).tolist()[0])   // イヤ実装
-		return dest
-}
-
 #endif
-
-
-void modelData::dataDump(modelData& mdl, bool detail)
-{
-	using namespace std;
-
-	cout << "vertex : " << mdl.n_vert << endl;
-	if(detail){
-		jhl_xyz* t;
-		for (int i = 0; i < mdl.n_vert; i++)
-		{
-			t = &mdl.verts[i];
-			cout << i << ": ( " << t->x << ", " << t->y << ", " << t->z << " )" << endl;
-		}
-	}
-
-	cout << "polygon : " << mdl.n_pol << endl;
-	if (detail) {
-		pol_def* t;
-		for (int i = 0; i < mdl.n_pol; i++)
-		{
-			t = &mdl.poldef[i];
-			cout << i << " : ( " << t->a << ", " << t->b << ", " << t->c << " )" << endl;
-		}
-	}
-
-	cout << "attributes : " << endl;
-	for (int i = 0; i < mdl.n_group; i++)
-	{
-		grpAttrib t = mdl.attr[i];
-		if (detail) {
-			cout << " member : ";
-			for (int j = 0; j < t.n_member; j++)
-			{
-				cout << t.member[j] << " ,";
-			}
-			cout << endl;
-		}
-
-		if (t.pTex == 0)
-		{
-			cout << " no texture" << endl;
-		}
-		else
-		{
-			// todo to be written
-			//	char*	texName;
-			// char*	pTex;
-			// texUv*	uv;
-		}
-
-		cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
-	}
-}
-
 
 
 int jhl3Dlib::draw(const object& mdl)
@@ -603,6 +559,11 @@ int jhl3Dlib::draw(const object& mdl)
 						//					painter->point(jhl_xy_i(temp_x02, y), 0);
 						painter->line_h(y, temp_x01, temp_x02);
 
+						// z の計算
+						// 直接Zバッファを塗ってしまう
+
+
+
 						temp_x01 += delta_x01;
 						temp_x02 += delta_x02;
 					}
@@ -669,6 +630,11 @@ int jhl3Dlib::draw(const object& mdl)
 				float temp_x12 = t_vert_disp[y_sort[1]].x;
 
 				// todo 最初のラインが欠けるかも
+				jhl_xyz	p_wari[2];
+
+				int	y_all01 = (int)t_vert_disp[y_sort[1]].y - (int)t_vert_disp[y_sort[0]].y;
+				int	y_all02 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[0]].y;
+				int y_start0 = (int)t_vert_disp[y_sort[0]].y;
 
 				for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
 				{
@@ -677,10 +643,18 @@ int jhl3Dlib::draw(const object& mdl)
 					//					painter->point(jhl_xy_i(temp_x02, y), 0);
 					painter->line_h(y, temp_x01, temp_x02);
 
+					// z を塗る
+					p_wari[0] = projback_disp_to_normal_box((y - y_start0), y_all01,
+						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
+					p_wari[1] = projback_disp_to_normal_box((y - y_start0), y_all02,
+						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+					projback_disp_to_normal_box_line(p_wari[0], p_wari[1]);
+
 					temp_x01 += delta_x01;
 					temp_x02 += delta_x02;
 				}
 
+				int	y_all1 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[1]].y;
 				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
 				{
 					//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
@@ -788,9 +762,7 @@ En_draw_type jhl3Dlib::draw_type_next()
 
 
 // もう一枚かぶせたい？
-// todo キャッシュのフラッシュのタイミング。
-// todo 実は計算量少ない機が…特に最近のDSP命令あったら　オーバーヘッドが大きいかも？
-// 同一フレーム内などで、同じモデルを何インスタンスも描画するときとか。
+// todo 実は計算量少ない機が…特に最近のDSP命令あったら　オーバーヘッドのほうが大きいかも？
 jhl_xyz jhl3Dlib::transToDisp(int vert_idx)
 {
 	if (p_TTDcache == NULL)
@@ -849,3 +821,59 @@ void jhl3Dlib::transToDisp_cache_clear()
 	cache_total = 0;
 	cache_miss = 0;
 }
+
+
+
+void modelData::dataDump(modelData& mdl, bool detail)
+{
+	using namespace std;
+
+	cout << "vertex : " << mdl.n_vert << endl;
+	if (detail) {
+		jhl_xyz* t;
+		for (int i = 0; i < mdl.n_vert; i++)
+		{
+			t = &mdl.verts[i];
+			cout << i << ": ( " << t->x << ", " << t->y << ", " << t->z << " )" << endl;
+		}
+	}
+
+	cout << "polygon : " << mdl.n_pol << endl;
+	if (detail) {
+		pol_def* t;
+		for (int i = 0; i < mdl.n_pol; i++)
+		{
+			t = &mdl.poldef[i];
+			cout << i << " : ( " << t->a << ", " << t->b << ", " << t->c << " )" << endl;
+		}
+	}
+
+	cout << "attributes : " << endl;
+	for (int i = 0; i < mdl.n_group; i++)
+	{
+		grpAttrib t = mdl.attr[i];
+		if (detail) {
+			cout << " member : ";
+			for (int j = 0; j < t.n_member; j++)
+			{
+				cout << t.member[j] << " ,";
+			}
+			cout << endl;
+		}
+
+		if (t.pTex == 0)
+		{
+			cout << " no texture" << endl;
+		}
+		else
+		{
+			// todo to be written
+			//	char*	texName;
+			// char*	pTex;
+			// texUv*	uv;
+		}
+
+		cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
+	}
+}
+
