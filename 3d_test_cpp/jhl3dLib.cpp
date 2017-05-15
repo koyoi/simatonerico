@@ -145,6 +145,15 @@ void jhl3Dlib::calc_lighting(pol_def* pol)
 }
 
 
+void jhl3Dlib::setTgtObj(const object & tgt)
+{
+	tgtMdl = tgt.p_model;		// setTgt() みたいにした方が明示的に分かる？　別名つけただけでしかないけど...
+	setTransMat(tgt.model_mat);	// モデルビュー変換～ディスプレイ座標変換まで一気にセット
+
+	transToDisp_cache_clear();
+}
+
+
 // ビューマトリクス生成
 // t : 視線方向の逆ベクトル
 // r : 視線をｚ方向としたときの、x方向に当たるベクトル
@@ -357,7 +366,7 @@ result:mat.point1;
 
 // スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
 // todo １ライン一気版
-jhl_xyz jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1)
+jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1)
 {
 	jhl_xyz rv;
 
@@ -480,10 +489,9 @@ void modelData::dataDump(modelData& mdl, bool detail)
 int jhl3Dlib::draw(const object& mdl)
 {
 	int rv = 0;	//	適当
-	jhl3Dlib::tgtMdl = mdl.p_model;	// setTgt() みたいにした方が明示的に分かる？　別名つけただけでしかないけど...
 	jhl_xyz	t_vert_disp[3];			// ディスプレイ座標へ変換後の座標（ただし、まだfloat,z(zは正規化状態)も持ってる）
 
-	setTransMat( mdl.model_mat );	// モデルビュー変換～ディスプレイ座標変換まで一気にセット
+	jhl3Dlib::setTgtObj( mdl );
 
 	// 色設定 toria
 	if (mdl.attrib_override)
@@ -760,14 +768,7 @@ int jhl3Dlib::draw(const object& mdl)
 		break;
 	}
 
-
-#if 0
-	elif(draw_type == 0) :
-		x = 0
-		elif(draw_type == 2) :
-		x = 0
-#endif
-		return rv;
+	return rv;
 }
 
 

@@ -86,6 +86,8 @@ private:
 	static viewport_config	vp;
 	static jhl_xy_i			display;	// キャンバスサイズ
 
+public:
+	static void			setTgtObj( const object& tgt);
 
 private:
 	static modelData*	tgtMdl;
@@ -115,11 +117,12 @@ public:
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
 
-	static void		setTransMat(const matHomo4& mdl_mat);
-
-	static jhl_xyz	jhl3Dlib::proj_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
+	static jhl_xyz	projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
 
 	static float	check_side(jhl_xyz* verts);
+
+private:
+	static void		setTransMat(const matHomo4& mdl_mat);
 
 
 // 照明
@@ -148,7 +151,7 @@ public:
 	static int draw(const object& mdl);
 
 	static En_draw_type draw_type_next();
-	static void		set_draw_type(::En_draw_type type)
+	static void		set_draw_type(En_draw_type type)
 	{
 		draw_type = type;
 	}

@@ -40,9 +40,11 @@ const std::string data_file[] = { "L:\\users\\mayura.kage7\\Documents\\My Dropbo
 static void mouse_event(int event, int x, int y, int flags, void* param);
 static int proc_key(char);
 static void draw_info();
+static void obj_attribs_init();
+static int read_data_file();
+static void next_frame();
 
 
-// todo 
 inline int max(int a, int b)
 {
 	return((a > b) ? a : b);
@@ -84,12 +86,11 @@ jhl_rgb	font_color_info_defaut = jhl_rgb(0, 255, 255);
 modelData	models[NUM_MODEL];	//	ポリゴンモデルそのものと、それに適用するアフィン変換の最終的なマトリックス
 sceneObj	obj[NUM_OBJ];		//	位置・回転、速度その他諸々
 
+unsigned int	obj_vertex_size_max;	// todo
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	unsigned long	frame_time = 100;	// [ms]
-	unsigned int	obj_vertex_size_max = 0;
 
 	jhl3Dlib::set_painter(painter);
 	painter.disp_init(window);	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
@@ -133,76 +134,18 @@ main(int argc, char *argv[])
 	// ディスプレイ変換
 	jhl3Dlib::set_disp_trans(window);
 
-	jhl3Dlib::set_draw_type( drawType_line_front_face );
+	jhl3Dlib::set_draw_type(drawType_flat_lighting);
 
 	// ファイル読み込み
-	std::cout << "read data" << std::endl;
-	int rv = 0;
-	for (int i = 0; i < NUM_MODEL; i++)
-	{
-		std::cout << "read file : " << data_file[i] << std::endl;
-		if (read_data(models[i], data_file[i]) <= 0) {
-			std::cout << "file read error. abort." << std::endl;
-			exit(-1);
-		}
-		else
-		{
-			obj_vertex_size_max = max(obj_vertex_size_max, models[i].n_vert);
-			std::cout << "obj id: " << i << std::endl;
-			modelData::dataDump(models[i]);
-			std::cout << std::endl;
-			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
-		}
-	}
+	read_data_file();
 
+	// 座標変換のキャッシュ初期化
 	if (!jhl3Dlib::transToDisp_cache_init(obj_vertex_size_max))
 	{
 		std::cout << "vertex trans cache alloc fail ( memory short ). nocache mode." << std::endl;
 	};
 
-	// オブジェクトの位置
-	obj[0].pos = jhl_xyz(0, 0, -5);
-	obj[0].trans = 1;
-//	obj[0].trans.rot_axis_x(0.2f);
-//	obj[0].trans.rot_axis_y(0.3f);
-//	obj[0].trans.rot_axis_z(0.4f);
-//	obj[0].trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
-	obj[0].acc = 1;
-	obj[0].acc.rot_axis_x(0.1f/3.14);
-//	obj[0].acc.rot_axis_y(0.3f/3.14);
-//	obj[0].acc.rot_axis_z(0.2f/3.14);
-	obj[0].acc.rot_by_vec( jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
-	obj[0].size = 1;
-//	obj[0].size *= jhl_size(1, 2, 3);
-	obj[0].is_moved = true;
-	obj[0].obj.p_model = &models[0];
-
-
-	obj[1].size = 1;
-	obj[1].pos = jhl_xyz(5, 2, -10);
-	//	obj[1].trans = matHomo4(jhl_xyz(5, 2, -10));
-	obj[1].trans = 1;
-	obj[1].acc = matHomo4(1);
-//	obj[1].acc.rot_axis_x(0.2f);
-	obj[1].acc.rot_axis_y((float)0.12f/3.14);
-//	obj[1].acc.rot_axis_z(0.4f);
-	obj[1].acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
-	obj[1].is_moved = true;
-	obj[1].obj.p_model = &models[1];
-	obj[1].obj.attrib_override = true;
-	obj[1].obj.color = jhl_rgb(250, 250, 250);
-
-	obj[2].pos = jhl_xyz(-2, 4, -15);
-	obj[2].trans = 1;
-	obj[2].acc = 1;
-//	obj[2].acc.rot_axis_x((float)(0.25f / 3.14));
-	//	obj[0].acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
-	obj[2].acc.rot_by_vec(jhl_xyz(0.3f, 0.1f, 0.9f).normalize(), 0.05f);
-	obj[2].size = 1.5;
-	//	obj[2].size *= jhl_size(1, 2, 3);
-	obj[2].obj.p_model = &models[0];
-	obj[2].obj.attrib_override = true;
-	obj[2].obj.color = jhl_rgb(255, 220, 50);
+	obj_attribs_init();
 
 
 #ifdef _WIN32_
@@ -241,32 +184,14 @@ main(int argc, char *argv[])
 			area_changed = false;
 		}
 
-		// if(r_moved)	// UI操作
-		{
-			// ここでは処理不要
-		}
-
-		// 時刻更新でのオブジェクト変更だとか
-		for (int i = 0; i < NUM_OBJ; i++)
-		{
-			// 局所的な変換（アニメーションやボーン変形）
-			// todo
-
-			obj[i].trans = obj[i].acc * obj[i].trans;
-			rigid_trans( &obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
-		}
+		next_frame();
 
 		painter.disp_clear();
 		int rv;
 		// 実際の描画
-#if 1
 		for (int i = 0; i < NUM_OBJ; i++)
-#else
-		for (int i = 0; i < 1; i++)
-#endif
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
-			jhl3Dlib::transToDisp_cache_clear();
 		}
 
 		// ui
@@ -276,19 +201,113 @@ main(int argc, char *argv[])
 
 		Sleep(frame_time);
 		frame += 1;
-
 	}
 
-	// 終了　適当だけど
 	jhl3Dlib::transToDisp_cache_deinit();
 	painter.disp_destroy();
 
 	std::cout << "--- end ---" << std::endl;
+}
 
+
+static void next_frame( /*なにか？*/)
+{
+	// UI操作
+	{
+		// todo
+	}
+
+	// 時刻更新でのオブジェクト変更だとか
+	for (int i = 0; i < NUM_OBJ; i++)
+	{
+		// 局所的な変換（アニメーションやボーン変形）
+		// todo
+
+		obj[i].trans = obj[i].acc * obj[i].trans;
+		rigid_trans(&obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
+	}
 }
 
 
 
+// オブジェクトの初期設定
+// 位置とか色とか
+static void obj_attribs_init()
+{
+	sceneObj*	p_objTgt;
+
+	p_objTgt = &obj[0];
+	// オブジェクトの位置
+	p_objTgt->pos = jhl_xyz(0, 0, -5);
+	p_objTgt->trans = 1;
+	//	p_objTgt->trans.rot_axis_x(0.2f);
+	//	p_objTgt->trans.rot_axis_y(0.3f);
+	//	p_objTgt->trans.rot_axis_z(0.4f);
+	//	p_objTgt->trans.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	p_objTgt->acc = 1;
+	p_objTgt->acc.rot_axis_x(0.1f / 3.14);
+	//	p_objTgt->acc.rot_axis_y(0.3f/3.14);
+	//	p_objTgt->acc.rot_axis_z(0.2f/3.14);
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
+	p_objTgt->size = 1;
+	//	p_objTgt->size *= jhl_size(1, 2, 3);
+	p_objTgt->is_moved = true;
+	p_objTgt->obj.p_model = &models[0];
+
+
+	p_objTgt = &obj[1];
+	p_objTgt->size = 1;
+	p_objTgt->pos = jhl_xyz(5, 2, -10);
+	//	p_objTgt->trans = matHomo4(jhl_xyz(5, 2, -10));
+	p_objTgt->trans = 1;
+	p_objTgt->acc = matHomo4(1);
+	//	p_objTgt->acc.rot_axis_x(0.2f);
+	p_objTgt->acc.rot_axis_y((float)0.12f / 3.14);
+	//	p_objTgt->acc.rot_axis_z(0.4f);
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
+	p_objTgt->is_moved = true;
+	p_objTgt->obj.p_model = &models[1];
+	p_objTgt->obj.attrib_override = true;
+	p_objTgt->obj.color = jhl_rgb(250, 250, 250);
+
+
+	p_objTgt = &obj[2];
+	p_objTgt->pos = jhl_xyz(-2, 4, -15);
+	p_objTgt->trans = 1;
+	p_objTgt->acc = 1;
+	//	p_objTgt->acc.rot_axis_x((float)(0.25f / 3.14));
+	//	p_objTgt->acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.3f, 0.1f, 0.9f).normalize(), 0.05f);
+	p_objTgt->size = 1.5;
+	//	p_objTgt->size *= jhl_size(1, 2, 3);
+	p_objTgt->obj.p_model = &models[0];
+	p_objTgt->obj.attrib_override = true;
+	p_objTgt->obj.color = jhl_rgb(255, 220, 50);
+}
+
+// 返値未定
+static int read_data_file()
+{
+	std::cout << "read data" << std::endl;
+	int rv = 0;
+	for (int i = 0; i < NUM_MODEL; i++)
+	{
+		std::cout << "read file : " << data_file[i] << std::endl;
+		if (read_and_perse_data(models[i], data_file[i]) <= 0) {
+			std::cout << "file read error. abort." << std::endl;
+			return(-1);
+		}
+		else
+		{
+			obj_vertex_size_max = max(obj_vertex_size_max, models[i].n_vert);
+			std::cout << "obj id: " << i << std::endl;
+			modelData::dataDump(models[i]);
+			std::cout << std::endl;
+			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
+		}
+	}
+	return(0);
+}
 
 int proc_key(char key)
 {
@@ -385,8 +404,7 @@ void draw_info()
 #endif
 }
 
-static void 
-mouse_event(int event, int x, int y, int flags, void* param)
+static void mouse_event(int event, int x, int y, int flags, void* param)
 {
 	// イベントテスト
 	{

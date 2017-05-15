@@ -9,7 +9,7 @@
 #include "jhl3dLib.h"
 
 
-int read_data(modelData& model, std::string filename)
+int read_and_perse_data(modelData& model, std::string filename)
 {
 	std::ifstream reading_file(filename);
 	if (reading_file.fail())
