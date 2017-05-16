@@ -43,6 +43,14 @@ char*			jhl3Dlib::mdl_name;
 int	cache_miss;
 int	cache_total;
 
+
+// toria zチェック
+static void min_max_update(float& tgt);
+static void min_max_clear();
+float z_min;
+float z_max;
+
+
 //-----------------------------------------------------------
 inline static void swap(int& a, int& b)
 {
@@ -365,44 +373,52 @@ result:mat.point1;
 
 
 // スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
-jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float wari_, float all, jhl_xyz& p0, jhl_xyz& p1)
+jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float point, float all, jhl_xyz& p0, jhl_xyz& p1)
 {
 	jhl_xyz rv;
 	if (all == 0)
 	{
-		all = 0.0001f;	// toria ゼロ除算回避
-	}
-
-	float wari = wari_ / all;
-
-	rv.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
-	rv.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * rv.z;
-	rv.y = ((p0.y / p0.z) * (1 - wari) + (p1.y / p1.z) * wari) * rv.z;
-
-	return(rv);
-}
-
-void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1)
-{
-	jhl_xyz rv;
-	// toria
-	jhl_xyz* v_[2];
-
-	if (p0.x > p1.x)
-	{
-		v_[0] = &p1;
-		v_[1] = &p0;
+		// 視点から見て重なってる時、手前の点を返す
+		// todo あってるかな？
+		
+		if( p0.z <= p1.z )	// p1のほうが手前
+		{
+			rv.z = p1.z;
+			rv.x = (p1.x / p1.z) * rv.z;
+			rv.y = (p1.y / p1.z) * rv.z;
+		}
+		else
+		{
+			rv.z = p0.z;
+			rv.x = (p0.x / p0.z) * rv.z;
+			rv.y = (p0.y / p0.z) * rv.z;
+		}
 	}
 	else
 	{
-		v_[1] = &p1;
-		v_[0] = &p0;
-	}
+		float wari = point / all;
 
-	int x_all = v_[1]->x - v_[0]->x;
+		rv.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
+		rv.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * rv.z;
+		rv.y = ((p0.y / p0.z) * (1 - wari) + (p1.y / p1.z) * wari) * rv.z;
+	}
+	return(rv);
+}
+
+// zバッファ(仮)も塗ります
+void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1, int y_force)
+{
+//	toria: p0.x < p1.x で来る
+//	ほんとは呼び出し元では無くてこちらでやった方がいい気がするんだけど
+
+	jhl_xyz rv;
+	// toria
+
+	int x_all = p1.x - p0.x;
 
 	if (x_all == 0)
 	{
+		// todo 1pixだけ塗る？
 		return;
 	}
 
@@ -414,7 +430,16 @@ void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1)
 		rv.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * rv.z;
 		rv.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * rv.z;
 
-		painter->point_z(jhl_xy_i(v_[0]->x +x, v_[0]->y), rv.z );
+		// todo z check
+		// 今はここで塗る (1pixずつ)
+		painter->point_z(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), rv.z);
+//		painter->point_z(jhl_xy_i(p0.x + x, p0.y), rv.z);
+
+		if (y_force != (int)p0.y) {
+			int p = 1;
+		}
+
+		// todo texture fetch
 	}
 
 	return;
@@ -469,7 +494,8 @@ int jhl3Dlib::draw(const object& mdl)
 
 		for (int i = 0; i < tgtMdl->n_vert; i++)
 		{
-			painter->point( transToDisp(i) );	// 頂点番号でよい
+			jhl_xy_i _p = transToDisp(i);
+			painter->point( _p );	// 頂点番号でよい
 //			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 		}
 		break;
@@ -555,14 +581,7 @@ int jhl3Dlib::draw(const object& mdl)
 					for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
 					{
 						//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
-						//					painter->point(jhl_xy_i(temp_x01, y), 0);
-						//					painter->point(jhl_xy_i(temp_x02, y), 0);
 						painter->line_h(y, temp_x01, temp_x02);
-
-						// z の計算
-						// 直接Zバッファを塗ってしまう
-
-
 
 						temp_x01 += delta_x01;
 						temp_x02 += delta_x02;
@@ -571,8 +590,6 @@ int jhl3Dlib::draw(const object& mdl)
 					for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
 					{
 						//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
-						//					painter->point(jhl_xy_i(temp_x12, y), 0);
-						//					painter->point(jhl_xy_i(temp_x02, y), 0);
 						painter->line_h(y, temp_x12, temp_x02);
 
 						temp_x12 += delta_x12;
@@ -587,6 +604,7 @@ int jhl3Dlib::draw(const object& mdl)
 	case drawType_flat_z:				// 単色ポリゴン、Zあり（光源あり、暗黙に裏面除外）;
 	{
 		int	y_sort[3] = { 0,1,2 };
+		min_max_clear();
 
 		for (int i = 0; i < tgtMdl->n_pol; i++)
 		{
@@ -605,7 +623,7 @@ int jhl3Dlib::draw(const object& mdl)
 			// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
 			calc_lighting(t_poldef);	// あたってる光の計算のみ。これに色を掛けるのだ
 
-										// 色設定 toria
+			// 色設定 toria
 			if (mdl.attrib_override)
 			{
 				painter->set_fillColor(mdl.color * light_calced);
@@ -615,6 +633,10 @@ int jhl3Dlib::draw(const object& mdl)
 				painter->set_fillColor(tgtMdl->attr[0].color * light_calced);
 			}
 
+			// z map 見やすくするため
+			min_max_update(t_vert_disp[0].z);
+			min_max_update(t_vert_disp[1].z);
+			min_max_update(t_vert_disp[2].z);
 
 			// ポリゴン頂点、yの小さい方からソート
 			sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
@@ -631,6 +653,9 @@ int jhl3Dlib::draw(const object& mdl)
 
 				// todo 最初のラインが欠けるかも
 				jhl_xyz	p_wari[2];
+				int y_hist = t_vert_disp[y_sort[0]].y;
+
+//				float y_[3];
 
 				int	y_all01 = (int)t_vert_disp[y_sort[1]].y - (int)t_vert_disp[y_sort[0]].y;
 				int	y_all02 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[0]].y;
@@ -648,13 +673,34 @@ int jhl3Dlib::draw(const object& mdl)
 						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
 					p_wari[1] = projback_disp_to_normal_box((y - y_start0), y_all02,
 						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
-					projback_disp_to_normal_box_line(p_wari[0], p_wari[1]);
+
+#if 0 
+					// 計算誤差でラインを飛ばしてしまう可能性があるので y を強制する
+// 確認コード
+					y_[0] = p_wari[0].y;
+					y_[1] = p_wari[1].y;
+
+					if ((int)y_[0] != y || (int)y_[1] != y) {
+						int i = 0;	// ブレークポイントを置くためのダミー
+					}
+#endif
+
+					if( p_wari[0].x <= p_wari[1].x )
+					{
+						projback_disp_to_normal_box_line(p_wari[0], p_wari[1], y);
+					}
+					else
+					{
+						projback_disp_to_normal_box_line(p_wari[1], p_wari[0], y);
+					}
 
 					temp_x01 += delta_x01;
 					temp_x02 += delta_x02;
 				}
 
-				int	y_all1 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[1]].y;
+				int	y_all12 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[1]].y;
+				int y_start1 = (int)t_vert_disp[y_sort[1]].y;
+
 				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
 				{
 					//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
@@ -662,70 +708,29 @@ int jhl3Dlib::draw(const object& mdl)
 					//					painter->point(jhl_xy_i(temp_x02, y), 0);
 					painter->line_h(y, temp_x12, temp_x02);
 
+					// z を塗る
+					p_wari[0] = projback_disp_to_normal_box((y - y_start1), y_all12,
+						t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
+					p_wari[1] = projback_disp_to_normal_box((y - y_start0), y_all02,
+						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+					if( p_wari[0].x <= p_wari[1].x )
+					{
+						projback_disp_to_normal_box_line(p_wari[0], p_wari[1], y);
+					}
+					else
+					{
+						projback_disp_to_normal_box_line(p_wari[1], p_wari[0], y);
+					}
+
 					temp_x12 += delta_x12;
 					temp_x02 += delta_x02;
 				}
 
 				// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
-	}
+			}
 		}
-
-#if 0
-						// idx0 ～ idx1 の、元座標での t : (1 - t) に分周する点
-						t0s_all = pd1s[1] - pd0s[1]   // スクリーン上でyだけ、走査する（ｘはすぐしたのループ内）
-						t1s_all = pd2s[1] - pd0s[1]   // 正規化空間の中での位置が知るため、スクリーン上でのその点による分割割合が知りたい
-						for t0s in range(int(t0s_all)) :
-							// クリーン上で水平線を引いてきて、xに平行に引いて、ｙをなめるとき、p0 - p1上である始点, p0 - p2上である終点の元座標
-							pt0 = proj_norm(t0s / t0s_all, p0s, p1s)
-							pt0.append(1.)
-							pt1 = proj_norm(t0s / t1s_all, p0s, p2s)
-							pt1.append(1.)
-							//1                    print(t0s / t0s_all, pt0[0:3], "", t0s / t1s_all, pt1[0:3], "", pd0s[1] + t0s)
-							// 直線 pt0 - pt1 をスクリーン上で１ピクセルずつ、元座標はなんなのかチェック
-							// するために、分割点 t0s での、x幅を計算
-							temp0 = (viewport_trans.dot((np.matrix(pt0).T)))[0] // x しかいらない
-							temp1 = (viewport_trans.dot((np.matrix(pt1).T)))[0]
-
-							x_start = int(min(temp0, temp1))
-							x_end = int(max(temp0, temp1))
-
-							x_all = x_end - x_start
-							//2                    print("x scan (disp) :", x_start, " - ", x_end)
-							//2                    print("wari_x, norm_x,y,z,disp_x,y,z")
-							for x_work in range(x_all) : // スクリーン上で1pixずつ
-								z_calc += 1
-								pt_scan_wari = (x_work / x_all)
-								pix_norm = proj_norm(pt_scan_wari, pt0, pt1)
-								//2                        print(pt_scan_wari, pix_norm, trans_disp([pix_norm]))
-
-								//                        print(int(z_buff_test[1]), int(z_buff_test[0]), ((z_buff_test[2] + 1) / 2) * 255)
-								//                        print("pos: ", x_start + x_work, pd0s[1] + t0s)
-								if (pix_norm[2] <= 1 and pix_norm[2] >= -1) :
-									z_buff_test = trans_disp([pix_norm])[0]
-									//                            z_temp = int(((pix_norm[2] + 1) / 2) * 255)
-									z_temp = int((((pix_norm[2] + 1) / 2) * 255 - 251) * 50) // debug 範囲を変えてみる
-																							 //                            print(z_temp)
-									z_min = min(z_min, z_temp)
-									z_max = max(z_max, z_temp)
-									if (int(img_z[int(pd0s[1] + t0s)][int(x_start + x_work)]) < z_temp) :
-										//                                print(int(pd0s[1] + t0s), int(x_start + x_work), ")", int(img_z[int(pd0s[1] + t0s), int(x_start + x_work)]), "<= ", z_temp)
-										img_z[int(pd0s[1] + t0s)][int(x_start + x_work)] = z_temp
-									else:
-		print(int(pd0s[1] + t0s), int(x_start + x_work), ")", int(img_z[int(pd0s[1] + t0s), int(x_start + x_work)]), )
-
-
-			// z map ここまで //
-
-
-
-
-
-			pols_drawn += 1
-			print("polygons drawn: ", pols_drawn)
-			print("z_min,max", z_min, z_max)
-			//        print("// z calc", z_calc)
-								else:
-#endif
+		std::cout << "zmin,max = " << z_min << ", " << z_max << std::endl;
+		min_max_clear();
 	}
 #if 0
 	case zソート
@@ -877,3 +882,16 @@ void modelData::dataDump(modelData& mdl, bool detail)
 	}
 }
 
+//toria
+static void min_max_update(float& tgt)
+{
+	if (tgt< z_min) z_min = tgt;
+	if (tgt> z_max) z_max = tgt;
+
+}
+
+static void min_max_clear()
+{
+	z_min = 1.0f;
+	z_max = 0.0f;
+}

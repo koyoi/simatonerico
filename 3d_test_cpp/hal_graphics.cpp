@@ -12,13 +12,14 @@ jhl_xy_i disp_base::window_size;
 
 
 void disp_base::
-triangle(jhl_xyz verts[3])
+triangle(jhl_xyz _p[3])
 //	渡すアドレスはディスプレイ座標
 {
 	// polyLines, fillPoly() があるけど、今回はこれで
+	jhl_xy_i verts[3] = { _p[0], _p[1], _p[2] };
 
-	line(verts[0], verts[1]);
-	line(verts[1], verts[2]);
-	line(verts[0], verts[2]);
+	line( verts[0], verts[1]);
+	line( verts[1], verts[2]);
+	line( verts[0], verts[2]);
 }
 

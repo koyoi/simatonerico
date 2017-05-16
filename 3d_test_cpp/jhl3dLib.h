@@ -119,7 +119,7 @@ public:
 
 //	static jhl_xyz	projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
 	static jhl_xyz	projback_disp_to_normal_box(float wari, float all, jhl_xyz& p0, jhl_xyz& p1);
-	static void		projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1);
+	static void		projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1, int y_force);
 
 	static float	check_side(jhl_xyz* verts);
 

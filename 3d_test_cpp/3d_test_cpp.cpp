@@ -81,6 +81,8 @@ viewport_config	viewport_area;
 bool	area_changed = true;
 
 bool	frame_pause = false;
+int		frame_step = 0;
+
 jhl_rgb	font_color_info_defaut = jhl_rgb(0, 255, 255);
 
 modelData	models[NUM_MODEL];	//	ポリゴンモデルそのものと、それに適用するアフィン変換の最終的なマトリックス
@@ -172,7 +174,7 @@ int main(int argc, char *argv[])
 		k = cv::waitKey(1);
 		proc_key(k);
 		if (frame_pause) {
-			Sleep(frame_time);
+			Sleep(300);
 			continue;    // 次のループへ
 		}
 
@@ -184,15 +186,20 @@ int main(int argc, char *argv[])
 			area_changed = false;
 		}
 
-		next_frame();
+		next_frame();	// ゲーム内の時間を進める
 
 		painter.disp_clear();
 		int rv;
 		// 実際の描画
+#if 0
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
 		}
+
+#else
+			rv = jhl3Dlib::draw(obj[1].obj);
+#endif
 
 		// ui
 		draw_info();
@@ -378,7 +385,8 @@ int proc_key(char key)
 		{
 			std::cout << "pause. (p)" << std::endl;
 		}
-
+	case('n'):
+		frame_step = 1;
 		break;
 	default:
 		break;
