@@ -302,10 +302,14 @@ public:
 };
 
 
-struct texUv{
+
+struct texUv_{
 	unsigned char u, v;
 };
 
+struct texUv {
+	texUv_ d[3];
+};
 
 class mat33 {
 public:

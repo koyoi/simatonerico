@@ -1,5 +1,11 @@
 #include "stdafx.h"
 
+/*
+	実質、windows + opencv 専用
+
+	xml にするか...
+*/
+
 #include <string>    // useful for reading and writing
 #include <sstream>   // istringstream
 #include <iostream>
@@ -20,12 +26,11 @@ int read_and_perse_data(modelData& model, std::string filename)
 
 	std::string reading_line_buffer;
 
-	std::string separated_string_buffer[3];
 	char delimiter = ',';
 
-	int group_target = 0;
-
-	grpAttrib *grp_tgt;
+	int attr_target = 0;
+	std::string temp_str_parse;
+	attr_type tgt_type = eATTR_FLAT;
 
 	// todo エラー時の既確保の解放
 	while ( std::getline(reading_file, reading_line_buffer) )
@@ -36,9 +41,19 @@ int read_and_perse_data(modelData& model, std::string filename)
 		}
 		else if (reading_line_buffer[0] == ':')
 		{
-			if (reading_line_buffer == ":name")
+			if (reading_line_buffer == ":version")
 			{
-				// todo モデル名　あるとデバッグとか便利かなって
+				int i;
+				reading_file >> i;
+				if (i != 3)
+				{
+					std::cout << "対応していないデータファイルの形式っぽいです。" << std::endl;
+					return 0;
+				}
+			}
+			else if (reading_line_buffer == ":name")
+			{
+				reading_file >> model.name;
 			}
 			else if (reading_line_buffer == ":vertex")
 			{
@@ -46,7 +61,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				model.verts = new jhl_xyz[model.n_vert];
 				if (model.verts == NULL)
 				{
-					std::cout << "buff allocate failed" << std::endl;
+					std::cout << "vert buff allocate failed" << std::endl;
 					return 0;
 				}
 
@@ -62,7 +77,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				model.poldef = new pol_def[model.n_pol];
 				if (model.poldef == NULL)
 				{
-					std::cout << "buff allocate failed" << std::endl;
+					std::cout << "pol buff allocate failed" << std::endl;
 					return 0;
 				}
 
@@ -72,83 +87,116 @@ int read_and_perse_data(modelData& model, std::string filename)
 				}
 			}
 
-			else if (reading_line_buffer == ":groups")
+			else if (reading_line_buffer == ":attributes")
 			{
-				reading_file >> model.n_group;
-				model.attr = new grpAttrib[model.n_group];
-				if (model.attr == NULL)
+				reading_file >> model.n_attr_flat >> delimiter >> model.n_attr_tex;
+
+				model.attr_flat = new attrib_flat[model.n_attr_flat];
+				model.attr_tex = new attrib_tex[model.n_attr_tex];
+				if (model.attr_flat == NULL || model.attr_tex == NULL )
 				{
 					std::cout << "attrib buff allocate failed" << std::endl;
 					return 0;
 				}
 			}
 
-			else if (reading_line_buffer == ":group")
+			else if (reading_line_buffer == ":attrib_target")
 			{
-				reading_file >> group_target;
-				group_target--;
-				grp_tgt = &model.attr[group_target];
-				grp_tgt->pTex = NULL;
-				grp_tgt->color = jhl_rgb(0,0,0);
-			}
+				reading_file >> temp_str_parse;
+				reading_file >> attr_target;
 
+				if (temp_str_parse == "flat")
+				{
+					tgt_type = eATTR_FLAT;
+					if (attr_target >= model.n_attr_flat)
+					{
+						std::cout << "file error. # of attrib \"flat\" decrared " << model.n_attr_flat << ". over flow" << std::endl;
+						return 0;
+					}
+				}
+				else if (temp_str_parse == "tex")
+				{
+					tgt_type = eATTR_TEX;
+					if (attr_target >= model.n_attr_tex)
+					{
+						std::cout << "file error. # of attrib \"tex\" decrared " << model.n_attr_tex << ". over flow" << std::endl;
+						return 0;
+					}
+				}
+				else
+				{
+					std::cout << "unknown attribute type:\"" << temp_str_parse << "\"" << std::endl;
+					return 0;
+				}
+			}
+				
+			// FLAT のみ
 			else if (reading_line_buffer == "::color")
 			{
-				int	c[3];
+				if (tgt_type == eATTR_FLAT)
+				{
+					int	c[3];
 
-				reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
-				model.attr[group_target].color = c;
+					reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
+					model.attr_flat[attr_target].color = c;
+				}
 			}
 
 			else if (reading_line_buffer == "::member")
 			{
-				reading_file >> grp_tgt->n_member;
-				grp_tgt->member = new int[grp_tgt->n_member];
-				if (model.attr == NULL)
+				if (tgt_type == eATTR_FLAT)
 				{
-					std::cout << "attrib buff allocate failed" << std::endl;
-					return 0;
-				}
+					int i;
+					reading_file >> i;
+					model.attr_flat[attr_target].n_member = i;
+					model.attr_flat[attr_target].member = new int[i];	// ポリゴン番号
+					if (model.attr_flat[attr_target].member == NULL)
+					{
+						std::cout << "attr_flat member buff allocate failed" << std::endl;
+						return 0;
+					}
 
-				/* カンマ区切り対応大変！
-				// todo
-				std::string split_temp, split_temp2;
-				int pos;
-				while (cnt_member < field_size)
-				{
-					std::getline(reading_file, split_temp);
-					do {
-						pos = split_temp.find_first_of(',');
-						model.attr[group_target].member[cnt_member] = atoi(split_temp.substr(0, pos - 1).c_str() );
-						split_temp = split_temp.substr(pos + 1);
-						cnt_member++;
-					} while (split_temp.size() != 0);
+					// 不定長のカンマ区切りをパースするのは大変そう
+					for (int cnt_member = 0; cnt_member < i; cnt_member++)
+					{
+						reading_file >> model.attr_flat[attr_target].member[cnt_member];
+					}
 				}
-				*/
-				for (int cnt_member = 0; cnt_member < grp_tgt->n_member; cnt_member++)
+				else
 				{
-					reading_file >> grp_tgt->member[cnt_member];
+					std::cout << "parse error" << __FILE__ << " " << __LINE__ << std::endl;
+					return 0;
 				}
 			}
 
-			// todo 以下コピペしただけ
-#if 0
 			else if (reading_line_buffer == "::texName")
 			{
-				reading_file >> model.attr[group_target].texName;
-			}
-
-			else if (reading_line_buffer == "::UV")	// todo
-			{
-				reading_file >> field_size;
-				model.attr = new grpAttrib[field_size];
-				if (model.attr == NULL)
+				if (tgt_type == eATTR_TEX)
 				{
-					std::cout << "attrib buff allocate failed" << std::endl;
-					return 0;
+					reading_file >> model.attr_tex[attr_target].texName;
 				}
 			}
-#endif
+
+			else if (reading_line_buffer == "::UV")
+			{
+				// 要素数は既知
+				model.attr_tex[attr_target].uv = new texUv[model.n_pol];
+				if (model.attr_tex[attr_target].uv == NULL)
+				{
+					std::cout << "uv buff allocate failed" << std::endl;
+					return 0;
+				}
+				for (int cnt = 0; cnt < model.n_pol; cnt++)
+				{
+					reading_file >> model.attr_tex[attr_target].uv[cnt].d[0].u
+						>> model.attr_tex[attr_target].uv[cnt].d[0].v
+						>> model.attr_tex[attr_target].uv[cnt].d[1].u
+						>> model.attr_tex[attr_target].uv[cnt].d[1].v
+						>> model.attr_tex[attr_target].uv[cnt].d[2].u
+						>> model.attr_tex[attr_target].uv[cnt].d[2].v;
+				}
+			}
+
 			else
 			{
 				std::cout << "error: file format error. unknown tag " << reading_line_buffer << ". abort." << std::endl;

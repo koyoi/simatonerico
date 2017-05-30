@@ -372,11 +372,12 @@ result:mat.point1;
 }
 
 
-// スクリーン座標上 p0,p1 の wari 分割割合から、標準視差台形内の座標を割り出す 
-jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float point, float all, jhl_xyz& p0, jhl_xyz& p1)
+// スクリーン座標上 p0,p1 の wari 分割割合から、標準視台形内の座標を割り出す
+//   パースが掛かる前のZが取れる
+jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float point, float line_len, const jhl_xyz& p0, const jhl_xyz& p1)
 {
 	jhl_xyz rv;
-	if (all == 0)
+	if (line_len == 0) // 点が重なっているとき、ゼロ除算になってしまう箇所があるので回避
 	{
 		// 視点から見て重なってる時、手前の点を返す
 		// todo あってるかな？
@@ -396,7 +397,7 @@ jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float point, float all, jhl_xyz& p
 	}
 	else
 	{
-		float wari = point / all;
+		float wari = point / line_len;
 
 		rv.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
 		rv.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * rv.z;
@@ -406,10 +407,11 @@ jhl_xyz jhl3Dlib::projback_disp_to_normal_box(float point, float all, jhl_xyz& p
 }
 
 // zバッファ(仮)も塗ります
-void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1, int y_force)
+void jhl3Dlib::projback_disp_to_normal_box_line(const jhl_xyz& p0, const jhl_xyz& p1, int y_force)
 {
 //	toria: p0.x < p1.x で来る
 //	ほんとは呼び出し元では無くてこちらでやった方がいい気がするんだけど
+	// せっかく参照で渡してるので p0, p1 をうまく入れ替える方法...
 
 	jhl_xyz rv;
 	// toria
@@ -436,7 +438,8 @@ void jhl3Dlib::projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1, int y_
 //		painter->point_z(jhl_xy_i(p0.x + x, p0.y), rv.z);
 
 		if (y_force != (int)p0.y) {
-			int p = 1;
+			volatile int p = 1;	// 誤差蓄積などで y がずれる事があるか？確認
+			// ブレークを置くための無意味コード
 		}
 
 		// todo texture fetch
@@ -470,7 +473,7 @@ jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 int jhl3Dlib::draw(const object& mdl)
 {
 	int rv = 0;	//	適当
-	jhl_xyz	t_vert_disp[3];			// ディスプレイ座標へ変換後の座標（ただし、まだfloat,z(zは正規化状態)も持ってる）
+	jhl_xyz	t_vert_disp[3];			// ディスプレイ座標へ変換後の座標（ただし、まだfloat,z(zは正規化状態)も持ってる）Temp(Vertex)_Display_space
 
 	jhl3Dlib::setTgtObj( mdl );
 
@@ -482,8 +485,8 @@ int jhl3Dlib::draw(const object& mdl)
 	}
 	else
 	{
-		painter->set_lineColor(tgtMdl->attr[0].color);	// 読み込んだモデル定義に定義された色 todo fillcolor
-		painter->set_fillColor(tgtMdl->attr[0].color);	// todo fillcolor
+		painter->set_lineColor(tgtMdl->attr_flat[0].color);	// 読み込んだモデル定義に定義された色 todo fillcolor
+		painter->set_fillColor(tgtMdl->attr_flat[0].color);	// todo fillcolor
 	}
 
 	pol_def* t_poldef;
@@ -531,7 +534,7 @@ int jhl3Dlib::draw(const object& mdl)
 			{
 				t_poldef = &tgtMdl->poldef[i];
 
-				t_vert_disp[0] = transToDisp(t_poldef->a);
+				t_vert_disp[0] = transToDisp(t_poldef->a);	// todo 高速化：　裏面スキップを先にできる
 				t_vert_disp[1] = transToDisp(t_poldef->b);
 				t_vert_disp[2] = transToDisp(t_poldef->c);
 
@@ -545,10 +548,11 @@ int jhl3Dlib::draw(const object& mdl)
 				{
 					// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
 					calc_lighting(t_poldef);	// あたってる光の計算のみ。これに色を掛けるのだ
+					// memo なるほど、シェーダーが欲しくなるね！
 				}
 				else
 				{
-					light_calced = 1.0f;
+					light_calced = 1.0f;	// １固定
 				}
 
 				if (mdl.attrib_override)
@@ -557,10 +561,10 @@ int jhl3Dlib::draw(const object& mdl)
 				}
 				else
 				{
-					painter->set_fillColor(tgtMdl->attr[0].color * light_calced);
+					painter->set_fillColor(tgtMdl->attr_flat[0].color * light_calced);
 				}
 
-				// 1) ポリゴン頂点の画面上yソート
+				// 画面上、上から下に、左から右に塗っていきたい
 				sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
 
 				// 2) y最小 から2つに点へ引く直線の式...　line()内で実装されてるんだろうけど
@@ -568,17 +572,18 @@ int jhl3Dlib::draw(const object& mdl)
 				{
 					//				std::cout << "sorted vetrexes" << std::endl;
 					//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
+					jhl_xyz rds[3] = { t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]],t_vert_disp[y_sort[2]] };	//(vec)R_Temp_Sorted
 
-					float delta_x01 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
-					float delta_x02 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
-					float delta_x12 = grad(t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
-					float temp_x01 = t_vert_disp[y_sort[0]].x;
-					float temp_x02 = t_vert_disp[y_sort[0]].x;
-					float temp_x12 = t_vert_disp[y_sort[1]].x;
+					float delta_x01 = grad(rds[0], rds[1]);
+					float delta_x02 = grad(rds[0], rds[2]);
+					float delta_x12 = grad(rds[1], rds[2]);
+					float temp_x01 = rds[0].x;
+					float temp_x02 = rds[0].x;
+					float temp_x12 = rds[1].x;
 
 					// todo 最初のラインが欠けるかも
 
-					for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
+					for (int y = (int)rds[0].y; y < (int)rds[1].y; y++)
 					{
 						//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
 						painter->line_h(y, temp_x01, temp_x02);
@@ -587,7 +592,7 @@ int jhl3Dlib::draw(const object& mdl)
 						temp_x02 += delta_x02;
 					}
 
-					for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
+					for (int y = rds[1].y; y < rds[2].y - 1; y++)
 					{
 						//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
 						painter->line_h(y, temp_x12, temp_x02);
@@ -600,6 +605,7 @@ int jhl3Dlib::draw(const object& mdl)
 				}
 			}
 		}
+		break;
 
 	case drawType_flat_z:				// 単色ポリゴン、Zあり（光源あり、暗黙に裏面除外）;
 	{
@@ -620,8 +626,8 @@ int jhl3Dlib::draw(const object& mdl)
 				continue;
 			}
 
-			// 面の色（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
-			calc_lighting(t_poldef);	// あたってる光の計算のみ。これに色を掛けるのだ
+			// あたってる光の色の計算（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
+			calc_lighting(t_poldef);	// これに色を掛けるのだ
 
 			// 色設定 toria
 			if (mdl.attrib_override)
@@ -630,38 +636,37 @@ int jhl3Dlib::draw(const object& mdl)
 			}
 			else
 			{
-				painter->set_fillColor(tgtMdl->attr[0].color * light_calced);
+				painter->set_fillColor(tgtMdl->attr_flat[0].color * light_calced);
 			}
 
-			// z map 見やすくするため
+			// debug z map 見やすくするためだけのもの
 			min_max_update(t_vert_disp[0].z);
 			min_max_update(t_vert_disp[1].z);
 			min_max_update(t_vert_disp[2].z);
 
 			// ポリゴン頂点、yの小さい方からソート
+			// yの上の方から描く（次に、左から右へ塗る）
 			sort_y(t_vert_disp, y_sort);	// arg0:対象のポリゴン arg1:ソート結果（順番）
 			{
 				//				std::cout << "sorted vetrexes" << std::endl;
 				//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
+				jhl_xyz rds[3] = { t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]],t_vert_disp[y_sort[2]] };	//(vec)R_Temp_Sorted
 
-				float delta_x01 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
-				float delta_x02 = grad(t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
-				float delta_x12 = grad(t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
-				float temp_x01 = t_vert_disp[y_sort[0]].x;
-				float temp_x02 = t_vert_disp[y_sort[0]].x;
-				float temp_x12 = t_vert_disp[y_sort[1]].x;
+				float delta_x01 = grad(rds[0], rds[1]);
+				float delta_x02 = grad(rds[0], rds[2]);
+				float delta_x12 = grad(rds[1], rds[2]);
+				float temp_x01 = rds[0].x;
+				float temp_x02 = rds[0].x;
+				float temp_x12 = rds[1].x;
 
 				// todo 最初のラインが欠けるかも
 				jhl_xyz	p_wari[2];
-				int y_hist = t_vert_disp[y_sort[0]].y;
 
-//				float y_[3];
+				int	y_all01 = (int)(rds[1].y - rds[0].y);
+				int	y_all02 = (int)(rds[2].y - rds[0].y);
+				int y_start0 = (int)rds[0].y;
 
-				int	y_all01 = (int)t_vert_disp[y_sort[1]].y - (int)t_vert_disp[y_sort[0]].y;
-				int	y_all02 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[0]].y;
-				int y_start0 = (int)t_vert_disp[y_sort[0]].y;
-
-				for (int y = (int)t_vert_disp[y_sort[0]].y; y < (int)t_vert_disp[y_sort[1]].y; y++)
+				for (int y = (int)rds[0].y; y < (int)rds[1].y; y++)
 				{
 					//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
 					//					painter->point(jhl_xy_i(temp_x01, y), 0);
@@ -670,9 +675,9 @@ int jhl3Dlib::draw(const object& mdl)
 
 					// z を塗る
 					p_wari[0] = projback_disp_to_normal_box((y - y_start0), y_all01,
-						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]]);
+						rds[0], rds[1]);
 					p_wari[1] = projback_disp_to_normal_box((y - y_start0), y_all02,
-						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+						rds[0], rds[2]);
 
 #if 0 
 					// 計算誤差でラインを飛ばしてしまう可能性があるので y を強制する
@@ -698,10 +703,10 @@ int jhl3Dlib::draw(const object& mdl)
 					temp_x02 += delta_x02;
 				}
 
-				int	y_all12 = (int)t_vert_disp[y_sort[2]].y - (int)t_vert_disp[y_sort[1]].y;
-				int y_start1 = (int)t_vert_disp[y_sort[1]].y;
+				int	y_all12 = (int)(rds[2].y - rds[1].y);
+				int y_start1 = (int)rds[1].y;
 
-				for (int y = t_vert_disp[y_sort[1]].y; y < t_vert_disp[y_sort[2]].y - 1; y++)
+				for (int y = rds[1].y; y < rds[2].y - 1; y++)
 				{
 					//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
 					//					painter->point(jhl_xy_i(temp_x12, y), 0);
@@ -710,9 +715,9 @@ int jhl3Dlib::draw(const object& mdl)
 
 					// z を塗る
 					p_wari[0] = projback_disp_to_normal_box((y - y_start1), y_all12,
-						t_vert_disp[y_sort[1]], t_vert_disp[y_sort[2]]);
+						rds[1], rds[2]);
 					p_wari[1] = projback_disp_to_normal_box((y - y_start0), y_all02,
-						t_vert_disp[y_sort[0]], t_vert_disp[y_sort[2]]);
+						rds[0], rds[2]);
 					if( p_wari[0].x <= p_wari[1].x )
 					{
 						projback_disp_to_normal_box_line(p_wari[0], p_wari[1], y);
@@ -854,9 +859,10 @@ void modelData::dataDump(modelData& mdl, bool detail)
 	}
 
 	cout << "attributes : " << endl;
-	for (int i = 0; i < mdl.n_group; i++)
+	cout << "  attribute - flat" << endl;
+	for (int i = 0; i < mdl.n_attr_flat; i++)
 	{
-		grpAttrib t = mdl.attr[i];
+		attrib_flat t = mdl.attr_flat[i];
 		if (detail) {
 			cout << " member : ";
 			for (int j = 0; j < t.n_member; j++)
@@ -865,20 +871,24 @@ void modelData::dataDump(modelData& mdl, bool detail)
 			}
 			cout << endl;
 		}
-
-		if (t.pTex == 0)
-		{
-			cout << " no texture" << endl;
-		}
-		else
-		{
-			// todo to be written
-			//	char*	texName;
-			// char*	pTex;
-			// texUv*	uv;
-		}
-
 		cout << " color : (" << t.color.r << ", " << t.color.g << ", " << t.color.b << ")" << endl;
+	}
+
+	cout << "  attribute - tex" << endl;
+	for (int i = 0; i < mdl.n_attr_tex; i++)
+	{
+		attrib_tex t = mdl.attr_tex[i];
+		if (detail) {
+			cout << " member : ";
+			if (t.texName != "")
+			{
+				cout << t.texName << endl;
+			}
+			if (t.texName2 != "")
+			{
+				cout << t.texName2 << endl;
+			}
+		}
 	}
 }
 

@@ -64,7 +64,6 @@ struct sceneObj
 
 	bool		attrib_override;
 	jhl_rgb		color;
-	// ëºÅAéGëΩ
 };
 
 

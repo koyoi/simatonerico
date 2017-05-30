@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <string>
 
 #include "basic3dCalc.h"
 //#include "hal_graphics.h"
@@ -33,17 +34,49 @@ drawType_max_,
 };
 
 
-struct grpAttrib
+enum attr_type {
+	eATTR_FLAT,
+	eATTR_TEX
+};
+
+
+class attrib_base
+{
+};
+
+
+struct attrib_tex
+{
+	//	char*	texName;
+	std::string	texName;
+	//	char*	Tex;
+	cv::Mat*	Tex;			// ocv 依存に..
+	texUv*		uv;
+
+	std::string	texName2;
+	cv::Mat*	Tex2;
+	texUv*		uv2;
+};
+
+
+struct attrib_flat
 {
 	int		n_member;
-	int*    member;
-
-	char*	texName;
-	char*	pTex;
-	texUv*	uv;
+	int*    member;			// 属するポリゴン番号
 
 	jhl_rgb	color;
 };
+
+
+#if 0
+struct attrib_line_color : attrib_base
+{
+	int		n_member;
+	int*    member;			// 属する頂点番号
+
+	jhl_rgb	color;
+};
+#endif
 
 
 class modelData {
@@ -51,14 +84,17 @@ public:
 	static void dataDump(modelData&, bool detail = false);
 
 public:
-	int			n_vert;
-	jhl_xyz*	verts;	// vert は配列のつもりなのだが、これでいいらしい
-	int			n_pol;
-	pol_def*	poldef;
-	int			n_group;
-	grpAttrib*	attr;
-
+	std::string name;
+	int			n_vert;		// 頂点数
+	jhl_xyz*	verts;		//  vert は配列のつもりなのだが、これでいいらしい
+	int			n_pol;		// ポリゴン数
+	pol_def*	poldef;			
+	int			n_attr_flat;		// 属性数
+	int			n_attr_tex;		// 属性数
+	attrib_tex*	attr_tex;
+	attrib_flat*	attr_flat;
 };
+
 
 
 struct object {
@@ -67,7 +103,8 @@ struct object {
 
 	// todo もっといい実装
 	bool		attrib_override;
-	jhl_rgb		color;
+	jhl_rgb		color;	// diffuse
+	// jhl_rgb		color;	// 発光
 };
 
 // ------------------------------------------------------------
@@ -118,8 +155,8 @@ public:
 	static void		set_disp_trans(const jhl_xy_i& window);
 
 //	static jhl_xyz	projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
-	static jhl_xyz	projback_disp_to_normal_box(float wari, float all, jhl_xyz& p0, jhl_xyz& p1);
-	static void		projback_disp_to_normal_box_line(jhl_xyz& p0, jhl_xyz& p1, int y_force);
+	static jhl_xyz	projback_disp_to_normal_box(float wari, float all, const jhl_xyz& p0, const jhl_xyz& p1);
+	static void		projback_disp_to_normal_box_line(const jhl_xyz& p0, const jhl_xyz& p1, int y_force);
 
 	static float	check_side(jhl_xyz* verts);
 
