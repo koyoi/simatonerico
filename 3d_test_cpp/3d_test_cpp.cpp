@@ -29,8 +29,9 @@ jhl_xy_i window = { 640, 480 };
 const std::string data_file[] = { "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat.txt",
 								  "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat_cube.txt" };
 #else
-const std::string data_file[] = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data\\dat.txt",
-								  "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data\\dat_cube.txt" };
+const std::string data_basedir = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data" };
+const std::string data_file[] = { "dat.txt",
+								  "dat_cube.txt" };
 #endif
 
 
@@ -138,7 +139,10 @@ int main(int argc, char *argv[])
 	jhl3Dlib::set_draw_type(drawType_flat_lighting);
 
 	// ファイル読み込み
-	read_data_file();
+	if (read_data_file() < 0)
+	{
+		exit(-1);
+	};
 
 	// 座標変換のキャッシュ初期化
 	if (!jhl3Dlib::transToDisp_cache_init(obj_vertex_size_max))
@@ -190,7 +194,7 @@ int main(int argc, char *argv[])
 		painter.disp_clear();
 		int rv;
 		// 実際の描画
-#if 0
+#if 1
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
@@ -230,7 +234,7 @@ static void next_frame( /*なにか？*/)
 		// todo
 
 		obj[i].trans = obj[i].acc * obj[i].trans;
-		rigid_trans(&obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
+		set_mat_rigid_trans(&obj[i].obj.model_mat, obj[i].pos, obj[i].trans, obj[i].size);
 	}
 }
 
@@ -294,12 +298,14 @@ static void obj_attribs_init()
 // 返値未定
 static int read_data_file()
 {
-	std::cout << "read data" << std::endl;
 	int rv = 0;
+
+	std::cout << "read data" << std::endl;
+
 	for (int i = 0; i < NUM_MODEL; i++)
 	{
 		std::cout << "read file : " << data_file[i] << std::endl;
-		if (read_and_perse_data(models[i], data_file[i]) <= 0) {
+		if (read_and_perse_data(models[i], data_basedir, data_file[i]) <= 0) {
 			std::cout << "file read error. abort." << std::endl;
 			return(-1);
 		}
@@ -309,7 +315,8 @@ static int read_data_file()
 			std::cout << "obj id: " << i << std::endl;
 			modelData::dataDump(models[i]);
 			std::cout << std::endl;
-			// std::cout << "id:" << i << "  vertxes : " << objects[i].model.n_vert << " polygons : " << objects[i].model.n_pol << std::endl;
+			std::cout << "id:" << i << "  vertxes : " << models[i].n_vert 
+				<< " polygons : " << models[i].n_pol << std::endl;
 		}
 	}
 	return(0);

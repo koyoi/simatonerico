@@ -26,8 +26,8 @@ enum En_draw_type {
 	drawType_flat,
 	drawType_flat_lighting,
 	drawType_flat_z,
-/* 将来実装
-		drawType_flat_z_lighting,
+	drawType_tex,
+	/* 将来実装
 		drawType_phong,
 */
 drawType_max_,
@@ -39,23 +39,28 @@ enum attr_type {
 	eATTR_TEX
 };
 
-
+#if 0
 class attrib_base
 {
+public:
+	int hoge;
 };
-
+#endif
 
 struct attrib_tex
 {
 	//	char*	texName;
 	std::string	texName;
 	//	char*	Tex;
-	cv::Mat*	Tex;			// ocv 依存に..
-	texUv*		uv;
+	//	cv::Mat*	Tex;			// ocv 依存に..
+	CvMat*		Tex;			// ocv 依存に..
+	texUv*		uv;				// UV座標
+	pol_def*	poldef;			// モデルのポリゴンと同じポリゴン番号、頂点順。uvの何番が対応するか
 
 	std::string	texName2;
 	cv::Mat*	Tex2;
 	texUv*		uv2;
+	pol_def*	poldef2;
 };
 
 

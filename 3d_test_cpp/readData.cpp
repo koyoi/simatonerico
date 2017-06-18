@@ -15,12 +15,15 @@
 #include "jhl3dLib.h"
 
 
-int read_and_perse_data(modelData& model, std::string filename)
+int read_and_perse_data(modelData& model, std::string basedir, std::string filename)
 {
-	std::ifstream reading_file(filename);
-	if (reading_file.fail())
+	std::string temp_file_full_path = basedir + "\\" + filename;
+	std::ifstream reading_file(temp_file_full_path);
+	if (reading_file.fail( ))
 	{
-		std::cout << "error: file not found/ open error:" << filename << std::endl;
+		char temp;
+		std::cout << "error: file not found/ open error:" << temp_file_full_path << std::endl;
+		std::cin >> temp;
 		return 0;
 	}
 
@@ -35,27 +38,27 @@ int read_and_perse_data(modelData& model, std::string filename)
 	// todo エラー時の既確保の解放
 	while ( std::getline(reading_file, reading_line_buffer) )
 	{
-		if (reading_line_buffer[0] == '#')
+		if (reading_line_buffer[0] == '#')		// コメント
 		{
 			// コメント行
 		}
 		else if (reading_line_buffer[0] == ':')
 		{
-			if (reading_line_buffer == ":version")
+			if (reading_line_buffer == ":version")	// ver
 			{
 				int i;
 				reading_file >> i;
 				if (i != 3)
 				{
-					std::cout << "対応していないデータファイルの形式っぽいです。" << std::endl;
+					std::cout << "データファイルの形式が対応していないバージョンっぽいです。" << std::endl;
 					return 0;
 				}
 			}
-			else if (reading_line_buffer == ":name")
+			else if (reading_line_buffer == ":name")	// モデル名（デバッグとかに便利かもと
 			{
 				reading_file >> model.name;
 			}
-			else if (reading_line_buffer == ":vertex")
+			else if (reading_line_buffer == ":vertex")	// 頂点座標
 			{
 				reading_file >> model.n_vert;
 				model.verts = new jhl_xyz[model.n_vert];
@@ -71,7 +74,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				}
 			}
 
-			else if (reading_line_buffer == ":polygon")
+			else if (reading_line_buffer == ":polygon")	// ポリゴン定義(頂点のインデックス)
 			{
 				reading_file >> model.n_pol;
 				model.poldef = new pol_def[model.n_pol];
@@ -87,7 +90,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				}
 			}
 
-			else if (reading_line_buffer == ":attributes")
+			else if (reading_line_buffer == ":attributes")	// グループがいくつあるか。flat, tex
 			{
 				reading_file >> model.n_attr_flat >> delimiter >> model.n_attr_tex;
 
@@ -100,7 +103,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				}
 			}
 
-			else if (reading_line_buffer == ":attrib_target")
+			else if (reading_line_buffer == ":attrib_target")	// ターゲットのグループの色の塗り方
 			{
 				reading_file >> temp_str_parse;
 				reading_file >> attr_target;
@@ -110,7 +113,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 					tgt_type = eATTR_FLAT;
 					if (attr_target >= model.n_attr_flat)
 					{
-						std::cout << "file error. # of attrib \"flat\" decrared " << model.n_attr_flat << ". over flow" << std::endl;
+						std::cout << "data incorrect. # of attrib \"flat\" exceeds decrared num " << model.n_attr_flat << std::endl;
 						return 0;
 					}
 				}
@@ -119,7 +122,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 					tgt_type = eATTR_TEX;
 					if (attr_target >= model.n_attr_tex)
 					{
-						std::cout << "file error. # of attrib \"tex\" decrared " << model.n_attr_tex << ". over flow" << std::endl;
+						std::cout << "data incorrect. # of attrib \"tex\" exceeds decrared num " << model.n_attr_tex << std::endl;
 						return 0;
 					}
 				}
@@ -142,7 +145,7 @@ int read_and_perse_data(modelData& model, std::string filename)
 				}
 			}
 
-			else if (reading_line_buffer == "::member")
+			else if (reading_line_buffer == "::member")	// 
 			{
 				if (tgt_type == eATTR_FLAT)
 				{
@@ -173,27 +176,47 @@ int read_and_perse_data(modelData& model, std::string filename)
 			{
 				if (tgt_type == eATTR_TEX)
 				{
-					reading_file >> model.attr_tex[attr_target].texName;
+					reading_file >> model.attr_tex[attr_target].texName;	// とりあえず。
+					std::string temp = basedir + "\\" + model.attr_tex[attr_target].texName;
+					const char* texname = temp.c_str();
+					model.attr_tex[attr_target].Tex = cvLoadImageM(texname);
+					if(model.attr_tex[attr_target].Tex == NULL )
+					{
+						std::cout << "tex file :" << texname <<"read failed"  << std::endl;
+						// return 0;
+					}
 				}
 			}
 
-			else if (reading_line_buffer == "::UV")
+			else if (reading_line_buffer == "::UVvtx")
 			{
 				// 要素数は既知
-				model.attr_tex[attr_target].uv = new texUv[model.n_pol];
+				model.attr_tex[attr_target].uv = new texUv[model.n_vert];
 				if (model.attr_tex[attr_target].uv == NULL)
 				{
-					std::cout << "uv buff allocate failed" << std::endl;
+					std::cout << "uv vtx buff allocate failed" << std::endl;
+					return 0;
+				}
+				for (int cnt = 0; cnt < model.n_vert; cnt++)
+				{
+					reading_file >> model.attr_tex[attr_target].uv[cnt].u >> delimiter
+						>> model.attr_tex[attr_target].uv[cnt].v;
+					printf("%d,%d\n", model.attr_tex[attr_target].uv[cnt].u, model.attr_tex[attr_target].uv[cnt].v);
+				}
+			}
+			else if (reading_line_buffer == "::UV")
+			{
+				model.attr_tex[attr_target].poldef = new pol_def[model.n_pol];
+				if (model.attr_tex[attr_target].poldef == NULL)
+				{
+					std::cout << "uv assign buff allocate failed" << std::endl;
 					return 0;
 				}
 				for (int cnt = 0; cnt < model.n_pol; cnt++)
 				{
-					reading_file >> model.attr_tex[attr_target].uv[cnt].d[0].u
-						>> model.attr_tex[attr_target].uv[cnt].d[0].v
-						>> model.attr_tex[attr_target].uv[cnt].d[1].u
-						>> model.attr_tex[attr_target].uv[cnt].d[1].v
-						>> model.attr_tex[attr_target].uv[cnt].d[2].u
-						>> model.attr_tex[attr_target].uv[cnt].d[2].v;
+					reading_file >> model.attr_tex[attr_target].poldef[cnt].a >> delimiter
+						>> model.attr_tex[attr_target].poldef[cnt].b >> delimiter
+						>> model.attr_tex[attr_target].poldef[cnt].c;
 				}
 			}
 

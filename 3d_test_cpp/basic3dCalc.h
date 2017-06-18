@@ -303,12 +303,8 @@ public:
 
 
 
-struct texUv_{
-	unsigned char u, v;
-};
-
-struct texUv {
-	texUv_ d[3];
+struct texUv{
+	unsigned int u, v;
 };
 
 class mat33 {
@@ -701,6 +697,6 @@ public:
 
 
 
-void rigid_trans(matHomo4* trans_mat, const jhl_xyz& pos, const matHomo4& r, const jhl_size& size);
+void set_mat_rigid_trans(matHomo4* trans_mat, const jhl_xyz& pos, const matHomo4& r, const jhl_size& size);
 
 

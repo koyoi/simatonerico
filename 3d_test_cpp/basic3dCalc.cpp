@@ -6,7 +6,7 @@
 #include "basic3dCalc.h"
 #include <cmath>
 
-void rigid_trans(matHomo4* trans_mat, const jhl_xyz& pos, const matHomo4& r, const jhl_size& size)
+void set_mat_rigid_trans(matHomo4* trans_mat, const jhl_xyz& pos, const matHomo4& r, const jhl_size& size)
 {
 	/*
  maxima code
