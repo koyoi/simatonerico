@@ -234,12 +234,7 @@ public:
 
 
 // 頂点へのインデックス
-// xxx using pol_def = int[3]	;	// うまくreadData() で扱えなくって... orz
-struct pol_def {
-	unsigned int a;	
-	unsigned int b;
-	unsigned int c;
-};
+typedef unsigned int pol_def[3];	// c++ では using を使えとのことだがうまくreadData() で扱えない... orz
 
 
 class jhl_rgb {

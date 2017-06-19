@@ -26,13 +26,12 @@ disp_ocv2	painter;
 jhl_xy_i window = { 640, 480 };
 
 #ifdef N2232
-const std::string data_file[] = { "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat.txt",
-								  "C:\\Users\\N2232\\Documents\\vs_proj\\3dtest_cpp\\data\\dat_cube.txt" };
+const std::string data_basedir = { "C:\\soukoRW\\3d_test_cpp\\3d_test_cpp\\data" };
 #else
 const std::string data_basedir = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data" };
-const std::string data_file[] = { "dat.txt",
-								  "dat_cube.txt" };
 #endif
+const std::string data_file[] = { "dat.txt",
+								"dat_cube.txt" };
 
 
 
@@ -181,7 +180,7 @@ int main(int argc, char *argv[])
 			continue;    // Ÿ‚Ìƒ‹[ƒv‚Ö
 		}
 
-		std::cout << std::endl << "frame " << frame << std::endl;
+//		std::cout << std::endl << "frame " << frame << std::endl;
 
 		if (area_changed)	// UI‘€ì
 		{
@@ -194,14 +193,14 @@ int main(int argc, char *argv[])
 		painter.disp_clear();
 		int rv;
 		// ÀÛ‚Ì•`‰æ
-#if 1
+#if 0
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
 		}
 
 #else
-			rv = jhl3Dlib::draw(obj[1].obj);
+		rv = jhl3Dlib::draw(obj[0].obj);
 #endif
 
 		// ui
@@ -278,7 +277,7 @@ static void obj_attribs_init()
 	p_objTgt->is_moved = true;
 	p_objTgt->obj.p_model = &models[1];
 	p_objTgt->obj.attrib_override = true;
-	p_objTgt->obj.color = jhl_rgb(250, 250, 250);
+	p_objTgt->obj.force_color = jhl_rgb(250, 250, 250);
 
 
 	p_objTgt = &obj[2];
@@ -292,7 +291,7 @@ static void obj_attribs_init()
 	//	p_objTgt->size *= jhl_size(1, 2, 3);
 	p_objTgt->obj.p_model = &models[0];
 	p_objTgt->obj.attrib_override = true;
-	p_objTgt->obj.color = jhl_rgb(255, 220, 50);
+	p_objTgt->obj.force_color = jhl_rgb(255, 220, 50);
 }
 
 // •Ô’l–¢’è
@@ -304,8 +303,10 @@ static int read_data_file()
 
 	for (int i = 0; i < NUM_MODEL; i++)
 	{
+		int rv;
 		std::cout << "read file : " << data_file[i] << std::endl;
-		if (read_and_perse_data(models[i], data_basedir, data_file[i]) <= 0) {
+		rv = read_and_perse_data(models[i], data_basedir, data_file[i]);
+		if ( rv <= 0) {
 			std::cout << "file read error. abort." << std::endl;
 			return(-1);
 		}
@@ -409,9 +410,12 @@ void draw_info()
 	sprintf(text, "frame: %4d", frame);
 	painter.putText( text, jhl_xy_i(0, 12), font_color_info_defaut);
 	
+	sprintf(text, "draw type: %s", jhl3Dlib::get_draw_type_string() );
+	painter.putText(text, jhl_xy_i(0, 24), font_color_info_defaut);
+
 	sprintf(text, "obj1 pos: (x, y, z) : %f, %f, %f", obj[0].pos.x, obj[0].pos.y, obj[0].pos.z);
-	painter.putText( text, jhl_xy_i(0, 24), font_color_info_defaut);
-//	text = "vp_near(f/v) : " + str(area_near);
+	painter.putText(text, jhl_xy_i(0, 36), font_color_info_defaut);
+	//	text = "vp_near(f/v) : " + str(area_near);
 	//painter.putText( text, jhl_xy_i(0, 36), font_color_info_defaut);
 //	text = "vp_far (g/b) : " + str(area_far);
 	//painter.putText( text, jhl_xy_i(0, 48), font_color_info_defaut);

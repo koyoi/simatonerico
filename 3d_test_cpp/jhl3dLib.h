@@ -33,6 +33,20 @@ enum En_draw_type {
 drawType_max_,
 };
 
+static const char *draw_type_str[] {
+	"drawType_vertex",
+	"drawType_line",
+	"drawType_line_front_face",
+	"drawType_flat",
+	"drawType_flat_lighting",
+	"drawType_flat_z",
+	"drawType_tex",
+	/* 将来実装
+	"drawType_phong,
+	*/
+	"drawType_max_",
+};
+
 
 enum attr_type {
 	eATTR_FLAT,
@@ -52,36 +66,40 @@ struct attrib_tex
 	//	char*	texName;
 	std::string	texName;
 	//	char*	Tex;
-	//	cv::Mat*	Tex;			// ocv 依存に..
-	CvMat*		Tex;			// ocv 依存に..
+	//	cv::Mat*	Tex;		// ocv 依存に..
+	CvMat*		Tex;			// todo 複数のモデル/グループで使いまわしたいので、ハンドルを持たせるほうがいいだろう
 	texUv*		uv;				// UV座標
 	pol_def*	poldef;			// モデルのポリゴンと同じポリゴン番号、頂点順。uvの何番が対応するか
-
-	std::string	texName2;
-	cv::Mat*	Tex2;
-	texUv*		uv2;
-	pol_def*	poldef2;
+								//  ポリゴン定義と混同注意
 };
 
 
 struct attrib_flat
 {
-	int		n_member;
-	int*    member;			// 属するポリゴン番号
-
-	jhl_rgb	color;
+	// からの構造体ってあり？ダミーがいる？
 };
 
 
-#if 0
-struct attrib_line_color : attrib_base
+typedef enum group_attr_type_
 {
-	int		n_member;
-	int*    member;			// 属する頂点番号
+	attr_flat = 0,
+	attr_tex,
+}group_attr_type;
 
-	jhl_rgb	color;
-};
-#endif
+
+typedef struct pol_group_
+{
+	group_attr_type	attr_type;
+	int		n_member;
+	int*	member;		// メンバーポリゴン
+	void*	attrib;		// attr_typeによって違う
+						// void* が指すのは、
+						//	attrib_tex*		attr_tex;
+						//	attrib_flat*	attr_flat;
+						// かなぁ
+	jhl_rgb	color;		// とりあえず、何でもカラー
+	//jhl_rgb	color;		// line color?
+}pol_group;
 
 
 class modelData {
@@ -93,11 +111,9 @@ public:
 	int			n_vert;		// 頂点数
 	jhl_xyz*	verts;		//  vert は配列のつもりなのだが、これでいいらしい
 	int			n_pol;		// ポリゴン数
-	pol_def*	poldef;			
-	int			n_attr_flat;		// 属性数
-	int			n_attr_tex;		// 属性数
-	attrib_tex*	attr_tex;
-	attrib_flat*	attr_flat;
+	pol_def*	poldef;		// モデルの形状
+	int			n_groups;
+	pol_group*	group;
 };
 
 
@@ -108,8 +124,9 @@ struct object {
 
 	// todo もっといい実装
 	bool		attrib_override;
-	jhl_rgb		color;	// diffuse
-	// jhl_rgb		color;	// 発光
+	jhl_rgb		force_color;	// diffuse,デバッグ用か？
+	// jhl_rgb		xxxx_color;	// 発光
+	// などなど..
 };
 
 // ------------------------------------------------------------
@@ -119,6 +136,8 @@ class jhl3Dlib
 
 public:
 	friend disp_base;
+	static const char*		jhl3Dlib::get_draw_type_string();
+	static En_draw_type		jhl3Dlib::get_draw_type();
 
 
 // settings

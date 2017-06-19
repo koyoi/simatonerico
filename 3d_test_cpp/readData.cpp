@@ -65,7 +65,7 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				if (model.verts == NULL)
 				{
 					std::cout << "vert buff allocate failed" << std::endl;
-					return 0;
+					return -1;
 				}
 
 				for ( int cnt_vert = 0; cnt_vert< model.n_vert; cnt_vert++ )
@@ -81,58 +81,76 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				if (model.poldef == NULL)
 				{
 					std::cout << "pol buff allocate failed" << std::endl;
-					return 0;
+					return -2;
 				}
 
 				for ( int cnt_pol = 0; cnt_pol < model.n_pol; cnt_pol++)
 				{
-					reading_file >> model.poldef[cnt_pol].a >> delimiter >> model.poldef[cnt_pol].b >> delimiter >> model.poldef[cnt_pol].c;
+					reading_file >> model.poldef[cnt_pol][0] >> delimiter >> model.poldef[cnt_pol][1] >> delimiter >> model.poldef[cnt_pol][2];
 				}
 			}
 
-			else if (reading_line_buffer == ":attributes")	// グループがいくつあるか。flat, tex
+			else if (reading_line_buffer == ":groups")	// グループがいくつあるか。
 			{
-				reading_file >> model.n_attr_flat >> delimiter >> model.n_attr_tex;
-
-				model.attr_flat = new attrib_flat[model.n_attr_flat];
-				model.attr_tex = new attrib_tex[model.n_attr_tex];
-				if (model.attr_flat == NULL || model.attr_tex == NULL )
+				reading_file >> model.n_groups;
+				model.group = new pol_group[model.n_groups];
+				if (model.group == NULL )
 				{
 					std::cout << "attrib buff allocate failed" << std::endl;
-					return 0;
+					return -3;
 				}
 			}
 
 			else if (reading_line_buffer == ":attrib_target")	// ターゲットのグループの色の塗り方
 			{
-				reading_file >> temp_str_parse;
 				reading_file >> attr_target;
+				reading_file >> temp_str_parse;
+
+				if (attr_target >= model.n_groups)
+				{
+					std::cout << "data incorrect. too many groups are defined. ( file format error )" << std::endl;
+					return -4;
+				}
 
 				if (temp_str_parse == "flat")
 				{
 					tgt_type = eATTR_FLAT;
-					if (attr_target >= model.n_attr_flat)
-					{
-						std::cout << "data incorrect. # of attrib \"flat\" exceeds decrared num " << model.n_attr_flat << std::endl;
-						return 0;
-					}
+					model.group[attr_target].attr_type = attr_flat;
+					model.group[attr_target].attrib = new attrib_flat;
 				}
 				else if (temp_str_parse == "tex")
 				{
 					tgt_type = eATTR_TEX;
-					if (attr_target >= model.n_attr_tex)
-					{
-						std::cout << "data incorrect. # of attrib \"tex\" exceeds decrared num " << model.n_attr_tex << std::endl;
-						return 0;
-					}
+					model.group[attr_target].attr_type = attr_tex;
+					model.group[attr_target].attrib = new attrib_tex;
 				}
 				else
 				{
 					std::cout << "unknown attribute type:\"" << temp_str_parse << "\"" << std::endl;
-					return 0;
+					return -5;
 				}
 			}
 				
+			else if (reading_line_buffer == "::member")	// 
+			{
+				int i;
+				reading_file >> i;
+				model.group[attr_target].n_member = i;	// ポリゴン番号;
+				model.group[attr_target].member = new int[i];	// ポリゴン番号;
+				if (model.group[attr_target].member == NULL)
+				{
+					std::cout << "attr_flat member buff allocate failed" << std::endl;
+					return -6;
+				}
+
+				// 不定長のカンマ区切りをパースするのは大変そうなので改行区切り。
+				// 移植を考えてvectorは使わない方がいいかもと
+				for (int cnt_member = 0; cnt_member < i; cnt_member++)
+				{
+					reading_file >> model.group[attr_target].member[cnt_member];
+				}
+			}
+
 			// FLAT のみ
 			else if (reading_line_buffer == "::color")
 			{
@@ -141,34 +159,12 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 					int	c[3];
 
 					reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
-					model.attr_flat[attr_target].color = c;
-				}
-			}
-
-			else if (reading_line_buffer == "::member")	// 
-			{
-				if (tgt_type == eATTR_FLAT)
-				{
-					int i;
-					reading_file >> i;
-					model.attr_flat[attr_target].n_member = i;
-					model.attr_flat[attr_target].member = new int[i];	// ポリゴン番号
-					if (model.attr_flat[attr_target].member == NULL)
-					{
-						std::cout << "attr_flat member buff allocate failed" << std::endl;
-						return 0;
-					}
-
-					// 不定長のカンマ区切りをパースするのは大変そう
-					for (int cnt_member = 0; cnt_member < i; cnt_member++)
-					{
-						reading_file >> model.attr_flat[attr_target].member[cnt_member];
-					}
+					model.group[attr_target].color = c;
 				}
 				else
 				{
-					std::cout << "parse error" << __FILE__ << " " << __LINE__ << std::endl;
-					return 0;
+					std::cout << "data format error. type tex does not have attrib \"color\"." << std::endl;
+					return -7;
 				}
 			}
 
@@ -176,54 +172,65 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 			{
 				if (tgt_type == eATTR_TEX)
 				{
-					reading_file >> model.attr_tex[attr_target].texName;	// とりあえず。
-					std::string temp = basedir + "\\" + model.attr_tex[attr_target].texName;
+					attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;
+
+					reading_file >> temp_attrib_tex->texName;	// とりあえず。
+					std::string temp = basedir + "\\" + temp_attrib_tex->texName;
 					const char* texname = temp.c_str();
-					model.attr_tex[attr_target].Tex = cvLoadImageM(texname);
-					if(model.attr_tex[attr_target].Tex == NULL )
+					temp_attrib_tex->Tex = cvLoadImageM(texname);
+					if(temp_attrib_tex->Tex == NULL )
 					{
 						std::cout << "tex file :" << texname <<"read failed"  << std::endl;
-						// return 0;
+						// return -9;
 					}
+				}
+				else
+				{
+					std::cout << "data format error. type flat does not have attrib \"texname\"." << std::endl;
+					return -8;
 				}
 			}
 
 			else if (reading_line_buffer == "::UVvtx")
 			{
 				// 要素数は既知
-				model.attr_tex[attr_target].uv = new texUv[model.n_vert];
-				if (model.attr_tex[attr_target].uv == NULL)
+				attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;
+
+
+				temp_attrib_tex->uv = new texUv[model.n_vert];
+				if (temp_attrib_tex->uv == NULL)
 				{
 					std::cout << "uv vtx buff allocate failed" << std::endl;
-					return 0;
+					return -10;
 				}
 				for (int cnt = 0; cnt < model.n_vert; cnt++)
 				{
-					reading_file >> model.attr_tex[attr_target].uv[cnt].u >> delimiter
-						>> model.attr_tex[attr_target].uv[cnt].v;
-					printf("%d,%d\n", model.attr_tex[attr_target].uv[cnt].u, model.attr_tex[attr_target].uv[cnt].v);
+					reading_file >> temp_attrib_tex->uv[cnt].u >> delimiter
+						>> temp_attrib_tex->uv[cnt].v;
 				}
 			}
 			else if (reading_line_buffer == "::UV")
 			{
-				model.attr_tex[attr_target].poldef = new pol_def[model.n_pol];
-				if (model.attr_tex[attr_target].poldef == NULL)
+				attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;
+
+				temp_attrib_tex->poldef = new pol_def[model.n_pol];
+				if (temp_attrib_tex->poldef == NULL)
 				{
 					std::cout << "uv assign buff allocate failed" << std::endl;
-					return 0;
+					return -11;
 				}
 				for (int cnt = 0; cnt < model.n_pol; cnt++)
 				{
-					reading_file >> model.attr_tex[attr_target].poldef[cnt].a >> delimiter
-						>> model.attr_tex[attr_target].poldef[cnt].b >> delimiter
-						>> model.attr_tex[attr_target].poldef[cnt].c;
+					reading_file >> temp_attrib_tex->poldef[cnt][0] >> delimiter
+						>> temp_attrib_tex->poldef[cnt][1] >> delimiter
+						>> temp_attrib_tex->poldef[cnt][2];
 				}
 			}
 
 			else
 			{
 				std::cout << "error: file format error. unknown tag " << reading_line_buffer << ". abort." << std::endl;
-				return 0;
+				return -12;
 			}
 		}
 	}
