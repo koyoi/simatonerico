@@ -32,7 +32,7 @@ public:
 	// 抽象クラスでの実装 
 	virtual void	rectangle(jhl_xy_i& start, jhl_xy_i& end, jhl_rgb& color, int thickness = 1) = 0;	// モデル描画には使わない
 	void	triangle(jhl_xyz verts[3]);
-	virtual void	line_h(float v, float h_start, float h_end) = 0;
+	virtual void	line_h(unsigned int v, float h_start, float h_end) = 0;
 
 	virtual void	putText(const char* s, jhl_xy_i& pos, jhl_rgb& color) = 0;
 

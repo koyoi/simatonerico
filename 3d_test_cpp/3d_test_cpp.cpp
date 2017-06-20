@@ -9,7 +9,7 @@
 
 
 #include <iostream>
-
+#include <chrono>
 
 #include "jhl3dLib.h"
 #include "readData.h"
@@ -91,14 +91,17 @@ unsigned int	obj_vertex_size_max;	// todo
 
 int main(int argc, char *argv[])
 {
+	std::chrono::system_clock::time_point  start, end;
+
+
 	unsigned long	frame_time = 100;	// [ms]
 
 	jhl3Dlib::set_painter(painter);
 	painter.disp_init(window);	// 640 x 480 の3レイヤー(BGR)で色バッファを生成・初期化
 
 	{
-		int vp_far = 80;
-		int vp_near = 5;
+		int vp_far = -100;
+		int vp_near = -5;
 		float left = -20;
 		float right = -left;
 		float top = -left*((float)window.y / window.x);
@@ -106,9 +109,6 @@ int main(int argc, char *argv[])
 		viewport_area = { vp_far, vp_near,  (int)left, (int)right, (int)top, (int)btm };
 	}
 	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : パースあり。
-
-	jhl_rgb		line_color = jhl_rgb(210, 150, 130);	// todo ここ？
-	int			line_width = 1;
 
 	jhl_rgb		light_ambient = { .2f, .2f, .2f };
 	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
@@ -138,9 +138,11 @@ int main(int argc, char *argv[])
 	jhl3Dlib::set_draw_type(drawType_flat_lighting);
 
 	// ファイル読み込み
-	if (read_data_file() < 0)
+	int rv;
+	rv = read_data_file();
+	if (rv < 0)
 	{
-		exit(-1);
+		exit(rv);
 	};
 
 	// 座標変換のキャッシュ初期化
@@ -180,7 +182,7 @@ int main(int argc, char *argv[])
 			continue;    // 次のループへ
 		}
 
-//		std::cout << std::endl << "frame " << frame << std::endl;
+		//		std::cout << std::endl << "frame " << frame << std::endl;
 
 		if (area_changed)	// UI操作
 		{
@@ -188,10 +190,22 @@ int main(int argc, char *argv[])
 			area_changed = false;
 		}
 
-		next_frame();	// ゲーム内の時間を進める
+		if (frame_step == 0)
+		{
+			next_frame();	// ゲーム内の時間を進める
+			frame += 1;
+		}
+		else if (frame_step == 1)
+		{
+			next_frame();
+			frame += 1;
+			frame_step = 2;
+		}
 
 		painter.disp_clear();
 		int rv;
+
+		start = std::chrono::system_clock::now();
 		// 実際の描画
 #if 0
 		for (int i = 0; i < NUM_OBJ; i++)
@@ -203,6 +217,9 @@ int main(int argc, char *argv[])
 		rv = jhl3Dlib::draw(obj[0].obj);
 #endif
 
+		end = std::chrono::system_clock::now();
+		double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(); //処理に要した時間をミリ秒に変換
+																									 
 		// ui
 		draw_info();
 
@@ -210,6 +227,7 @@ int main(int argc, char *argv[])
 
 		Sleep(frame_time);
 		frame += 1;
+		printf("処理時間: %ld\n", elapsed);
 	}
 
 	jhl3Dlib::transToDisp_cache_deinit();
@@ -247,7 +265,7 @@ static void obj_attribs_init()
 
 	p_objTgt = &obj[0];
 	// オブジェクトの位置
-	p_objTgt->pos = jhl_xyz(0, 0, -5);
+	p_objTgt->pos = jhl_xyz(0, 0, -15);
 	p_objTgt->trans = 1;
 	//	p_objTgt->trans.rot_axis_x(0.2f);
 	//	p_objTgt->trans.rot_axis_y(0.3f);
@@ -258,7 +276,7 @@ static void obj_attribs_init()
 	//	p_objTgt->acc.rot_axis_y(0.3f/3.14);
 	//	p_objTgt->acc.rot_axis_z(0.2f/3.14);
 	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// 続けてたらnormalizeのfp16量子化誤差の蓄積でわずかに各宿はいるかも試練が、それを言ったら。
-	p_objTgt->size = 1;
+	p_objTgt->size = 2;
 	//	p_objTgt->size *= jhl_size(1, 2, 3);
 	p_objTgt->is_moved = true;
 	p_objTgt->obj.p_model = &models[0];
@@ -274,6 +292,7 @@ static void obj_attribs_init()
 	p_objTgt->acc.rot_axis_y((float)0.12f / 3.14);
 	//	p_objTgt->acc.rot_axis_z(0.4f);
 	p_objTgt->acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
+	p_objTgt->size = 2;
 	p_objTgt->is_moved = true;
 	p_objTgt->obj.p_model = &models[1];
 	p_objTgt->obj.attrib_override = true;
@@ -281,7 +300,7 @@ static void obj_attribs_init()
 
 
 	p_objTgt = &obj[2];
-	p_objTgt->pos = jhl_xyz(-2, 4, -15);
+	p_objTgt->pos = jhl_xyz(-2, 4, -20);
 	p_objTgt->trans = 1;
 	p_objTgt->acc = 1;
 	//	p_objTgt->acc.rot_axis_x((float)(0.25f / 3.14));
@@ -308,7 +327,7 @@ static int read_data_file()
 		rv = read_and_perse_data(models[i], data_basedir, data_file[i]);
 		if ( rv <= 0) {
 			std::cout << "file read error. abort." << std::endl;
-			return(-1);
+			return(rv);
 		}
 		else
 		{
@@ -387,14 +406,24 @@ int proc_key(char key)
 
 		// シーン制御
 	case('p'):
+		if (frame_step != 0)
+		{
+			frame_step = 0;
+			frame_pause = 0;
+			break;
+		}
+
 		frame_pause = !frame_pause;
 		if (frame_pause)
 		{
 			std::cout << "pause. (p)" << std::endl;
 		}
+
 	case('n'):
 		frame_step = 1;
+		std::cout << "frame step.(n) \"p\"to resume." << std::endl;
 		break;
+
 	default:
 		break;
 	}

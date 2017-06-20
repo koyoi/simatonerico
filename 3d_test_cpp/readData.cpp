@@ -151,21 +151,12 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				}
 			}
 
-			// FLAT ‚Ì‚Ý
 			else if (reading_line_buffer == "::color")
 			{
-				if (tgt_type == eATTR_FLAT)
-				{
-					int	c[3];
+				int	c[3];
 
-					reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
-					model.group[attr_target].color = c;
-				}
-				else
-				{
-					std::cout << "data format error. type tex does not have attrib \"color\"." << std::endl;
-					return -7;
-				}
+				reading_file >> c[0] >> delimiter >> c[1] >> delimiter >> c[2];
+				model.group[attr_target].color = c;
 			}
 
 			else if (reading_line_buffer == "::texName")

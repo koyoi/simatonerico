@@ -178,15 +178,15 @@ public:
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
 
-//	static jhl_xyz	projback_disp_to_normal_box(float wari, jhl_xyz& p0, jhl_xyz& p1);
-	static jhl_xyz	projback_disp_to_normal_box(float wari, float all, const jhl_xyz& p0, const jhl_xyz& p1);
-	static void		projback_disp_to_normal_box_line(const jhl_xyz& p0, const jhl_xyz& p1, int y_force);
+//	static jhl_xyz	interpolate_line_to_non_persed(float wari, jhl_xyz& p0, jhl_xyz& p1);
+	static jhl_xyz	interpolate_line_to_non_persed(const int wari, const int all, const jhl_xyz& p0, const jhl_xyz& p1);
+	static void		interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, const jhl_xyz& p1, int y_force);
 
 	static float	check_side(jhl_xyz* verts);
 
 private:
 	static void		setTransMat(const matHomo4& mdl_mat);
-
+	static int		draw_one_polygon(jhl_xyz ** rds, texUv ** texuv_sorted, bool tex_en );
 
 // è∆ñæ
 public:
