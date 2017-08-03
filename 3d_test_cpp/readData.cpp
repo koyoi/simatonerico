@@ -163,21 +163,26 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 			{
 				if (tgt_type == eATTR_TEX)
 				{
-					attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;
-
+					attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;	// todo こういうキャストすると見にくいなぁ
 					reading_file >> temp_attrib_tex->texName;	// とりあえず。
 					std::string temp = basedir + "\\" + temp_attrib_tex->texName;
 					const char* texname = temp.c_str();
-					temp_attrib_tex->Tex = cvLoadImageM(texname);
-					if(temp_attrib_tex->Tex == NULL )
+
+					std::cout << "tex file :" << texname << "read" << std::endl;
+					temp_attrib_tex->Tex = cv::imread(texname);
+					if(1)
 					{
-						std::cout << "tex file :" << texname <<"read failed"  << std::endl;
+						std::cout << " [ok]" << std::endl;
+					}
+					else
+					{
+						std::cout << " [failed]"  << std::endl;
 						// return -9;
 					}
 				}
 				else
 				{
-					std::cout << "data format error. type flat does not have attrib \"texname\"." << std::endl;
+					std::cout << "data format error. type \"flat\" can not have attrib \"texname\"." << std::endl;
 					return -8;
 				}
 			}

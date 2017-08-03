@@ -66,8 +66,7 @@ struct attrib_tex
 	//	char*	texName;
 	std::string	texName;
 	//	char*	Tex;
-	//	cv::Mat*	Tex;		// ocv 依存に..
-	CvMat*		Tex;			// todo 複数のモデル/グループで使いまわしたいので、ハンドルを持たせるほうがいいだろう
+	cv::Mat		Tex;			// todo 複数のモデル/グループで使いまわしたいので、ハンドルを持たせるほうがいいだろう
 	texUv*		uv;				// UV座標
 	pol_def*	poldef;			// モデルのポリゴンと同じポリゴン番号、頂点順。uvの何番が対応するか
 								//  ポリゴン定義と混同注意
@@ -138,6 +137,7 @@ public:
 	friend disp_base;
 	static const char*		jhl3Dlib::get_draw_type_string();
 	static En_draw_type		jhl3Dlib::get_draw_type();
+	static cv::Mat*			tgtTex;
 
 
 // settings
@@ -181,12 +181,14 @@ public:
 //	static jhl_xyz	interpolate_line_to_non_persed(float wari, jhl_xyz& p0, jhl_xyz& p1);
 	static jhl_xyz	interpolate_line_to_non_persed(const int wari, const int all, const jhl_xyz& p0, const jhl_xyz& p1);
 	static void		interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, const jhl_xyz& p1, int y_force);
+	static void		interpolate_line_to_non_persed_with_z_fill_tex(const jhl_xyz& p0, const jhl_xyz& p1, int y_force, jhl_xyz& tex0, jhl_xyz& tex1);
 
 	static float	check_side(jhl_xyz* verts);
 
 private:
 	static void		setTransMat(const matHomo4& mdl_mat);
-	static int		draw_one_polygon(jhl_xyz ** rds, texUv ** texuv_sorted, bool tex_en );
+	static int		draw_a_polygon_flat(jhl_xyz ** rds, texUv ** texuv_sorted);
+	static int		draw_a_polygon_tex(jhl_xyz ** rds, texUv ** texuv_sorted);
 
 // 照明
 public:

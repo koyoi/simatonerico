@@ -264,15 +264,15 @@ static void obj_attribs_init()
 	p_objTgt->acc.rot_axis_x(0.1f / 3.14);
 	//	p_objTgt->acc.rot_axis_y(0.3f/3.14);
 	//	p_objTgt->acc.rot_axis_z(0.2f/3.14);
-	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.1f);	// ‘±‚¯‚Ä‚½‚çnormalize‚Ìfp16—Êq‰»Œë·‚Ì’~Ï‚Å‚í‚¸‚©‚ÉŠeh‚Í‚¢‚é‚©‚à—û‚ªA‚»‚ê‚ğŒ¾‚Á‚½‚çB
-	p_objTgt->size = 2;
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.01f);	// ‘±‚¯‚Ä‚½‚çnormalize‚Ìfp16—Êq‰»Œë·‚Ì’~Ï‚Å‚í‚¸‚©‚ÉŠeh‚Í‚¢‚é‚©‚à—û‚ªA‚»‚ê‚ğŒ¾‚Á‚½‚çB
+	p_objTgt->size = 5;
 	//	p_objTgt->size *= jhl_size(1, 2, 3);
 	p_objTgt->is_moved = true;
 	p_objTgt->obj.p_model = &models[0];
 
 
 	p_objTgt = &obj[1];
-	p_objTgt->size = 1;
+	p_objTgt->size = 3;
 	p_objTgt->pos = jhl_xyz(5, 2, -20);
 	//	p_objTgt->trans = matHomo4(jhl_xyz(5, 2, -10));
 	p_objTgt->trans = 1;
