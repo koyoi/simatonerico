@@ -3,11 +3,13 @@
 #include "jhl3dLib.h"
 #include "readData.h"
 
+
+#include <windows.h>	// 時間計測用
+
+
 /*
 メモ
 https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
-
-
 */
 
 //-----------------------------------------------------------
@@ -377,10 +379,10 @@ result:mat.point1;
 jhl_xyz jhl3Dlib::interpolate_line_to_non_persed(const int point, const int line_len, const jhl_xyz& p0, const jhl_xyz& p1)
 {
 	jhl_xyz rv;
-	if (line_len < 0.5) // 点が重なっているとき、ゼロ除算になってしまう箇所があるので回避
+	if (line_len < 2) // 点が重なっているとき、ゼロ除算になってしまう箇所があるので回避
 	{
 		// 視点から見て重なってる時、手前の点を返す
-		// todo あってるかな？
+		// todo 大きい方が手前でいいんだっけ？
 		
 		if( p0.z <= p1.z )	// p1のほうが手前
 		{
@@ -424,26 +426,21 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, con
 		return;
 	}
 
+	int x_all_temp = (int)x_all;
 	float wari;
-	for (float x = 0; x <= x_all; x++)
+	for (int x = 0; x <= x_all_temp; x++)
 	{
-		wari = x / x_all;
+		wari = (float)x / x_all;
 		rv.z = 1.0f / ((1.0f - wari) / p0.z + wari / p1.z);
 		rv.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * rv.z;
 		rv.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * rv.z;
 
 		// todo z check
 		// 今はここで塗る (1pixずつ)
-		painter->point_z(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f-rv.z);	// todo 確認、zは逆数
-//		painter->point_z(jhl_xy_i(p0.x + x, p0.y), rv.z);
+		painter->point_z(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / rv.z);	// todo? 確認、z透視深度（つまり、逆数を取(って、far-nearで正規化の逆をす）ると実際の値）
+//		painter->point_z(jhl_xy_i(rv.x, rv.y), 1.0f / rv.z);	// ↑ゴミが入る？？
 
-//		assert(y_force != (int)p0.y);
-		if (y_force != (int)p0.y) {
-			volatile int p = 1;	// 誤差蓄積などで y がずれる事があるか？確認
-			// ブレークを置くための無意味コード
-		}
-
-		// todo texture fetch
+		// assert(y_force == (int)p0.y);	// 誤差蓄積などで y がずれる事があるか？　→　良くあるみたい
 	}
 
 	return;
@@ -480,10 +477,23 @@ int jhl3Dlib::draw(const object& mdl)
 
 	int	y_sort[3] = { 0,1,2 };		// todo どうにかならんか
 
+	// 時間計測
+	LARGE_INTEGER freq;
+	if (!QueryPerformanceFrequency(&freq))      // 単位習得
+	{
+		std::cout << "時間計測タイマ初期化失敗" << std::endl;
+		return -100;
+	}
+	LARGE_INTEGER start, end;
+	static double time_elapsed;
+	static int time_count;
+
+	
 	jhl3Dlib::setTgtObj( mdl );
 
 	min_max_clear();
 
+	QueryPerformanceCounter(&start);
 	for (int grp = 0; grp < tgtMdl->n_groups; grp++)
 	{
 		tgt_grp = &(tgtMdl->group[grp]);
@@ -826,6 +836,15 @@ int jhl3Dlib::draw(const object& mdl)
 			break;
 		}
 	}
+	QueryPerformanceCounter(&end);
+	time_elapsed += (end.QuadPart - start.QuadPart)*1000*1000/freq.QuadPart;	// [us]
+	time_count++;
+	if (time_count > 30)
+	{
+		printf("calc time avg: %f [us]\n", time_elapsed / time_count);
+		time_count = 0;
+		time_elapsed = 0;
+	}
 
 	return rv;
 }
@@ -928,6 +947,7 @@ int jhl3Dlib::draw_one_polygon( jhl_xyz** rds, texUv** texUv, bool tex_en )
 		temp_x02 += delta_x02;
 	}
 	// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
+	return 0;	// とりあえず
 }
 
 

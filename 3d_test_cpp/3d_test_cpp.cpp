@@ -9,7 +9,7 @@
 
 
 #include <iostream>
-#include <chrono>
+
 
 #include "jhl3dLib.h"
 #include "readData.h"
@@ -17,7 +17,6 @@
 #ifdef _WIN32_
 #include "hal_gfx_ocv.h"
 disp_ocv2	painter;
-
 #else	// ameba
 
 #endif
@@ -91,9 +90,6 @@ unsigned int	obj_vertex_size_max;	// todo
 
 int main(int argc, char *argv[])
 {
-	std::chrono::system_clock::time_point  start, end;
-
-
 	unsigned long	frame_time = 100;	// [ms]
 
 	jhl3Dlib::set_painter(painter);
@@ -110,14 +106,14 @@ int main(int argc, char *argv[])
 	}
 	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : パースあり。
 
-	jhl_rgb		light_ambient = { .2f, .2f, .2f };
+	jhl_rgb		light_ambient = { .5f, .5f, .5f };
 	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
-	lights[0].dir = jhl_xyz(0.f, 1.f, 0.f).normalize();
-	lights[0].col = jhl_rgb(0.0f, 0.0f, 0.8f);
+	lights[0].dir = jhl_xyz(0.f, 1.f, -0.3f).normalize();
+	lights[0].col = jhl_rgb(0.2f, 0.2f, 0.8f);
 
-	lights[1].dir = jhl_xyz(0.1f, -1.0f, 0.2f).normalize();
-	lights[1].col = jhl_rgb(0.f, 0.8f, 0.f);
+	lights[1].dir = jhl_xyz(-0.4f, -1.0f, 0.2f).normalize();
+	lights[1].col = jhl_rgb(0.5f, 0.8f, 0.2f);
 
 	jhl3Dlib::light_ambient = &light_ambient;
 	jhl3Dlib::light_directional = lights;
@@ -204,10 +200,8 @@ int main(int argc, char *argv[])
 
 		painter.disp_clear();
 		int rv;
-
-		start = std::chrono::system_clock::now();
 		// 実際の描画
-#if 0
+#if 1
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
 			rv = jhl3Dlib::draw(obj[i].obj);
@@ -217,17 +211,12 @@ int main(int argc, char *argv[])
 		rv = jhl3Dlib::draw(obj[0].obj);
 #endif
 
-		end = std::chrono::system_clock::now();
-		double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(); //処理に要した時間をミリ秒に変換
-																									 
 		// ui
 		draw_info();
 
 		painter.disp_swap();
 
 		Sleep(frame_time);
-		frame += 1;
-		printf("処理時間: %ld\n", elapsed);
 	}
 
 	jhl3Dlib::transToDisp_cache_deinit();
@@ -265,7 +254,7 @@ static void obj_attribs_init()
 
 	p_objTgt = &obj[0];
 	// オブジェクトの位置
-	p_objTgt->pos = jhl_xyz(0, 0, -15);
+	p_objTgt->pos = jhl_xyz(0, 0, -25);
 	p_objTgt->trans = 1;
 	//	p_objTgt->trans.rot_axis_x(0.2f);
 	//	p_objTgt->trans.rot_axis_y(0.3f);
@@ -284,7 +273,7 @@ static void obj_attribs_init()
 
 	p_objTgt = &obj[1];
 	p_objTgt->size = 1;
-	p_objTgt->pos = jhl_xyz(5, 2, -10);
+	p_objTgt->pos = jhl_xyz(5, 2, -20);
 	//	p_objTgt->trans = matHomo4(jhl_xyz(5, 2, -10));
 	p_objTgt->trans = 1;
 	p_objTgt->acc = matHomo4(1);
@@ -300,7 +289,7 @@ static void obj_attribs_init()
 
 
 	p_objTgt = &obj[2];
-	p_objTgt->pos = jhl_xyz(-2, 4, -20);
+	p_objTgt->pos = jhl_xyz(-2, 4, -30);
 	p_objTgt->trans = 1;
 	p_objTgt->acc = 1;
 	//	p_objTgt->acc.rot_axis_x((float)(0.25f / 3.14));
