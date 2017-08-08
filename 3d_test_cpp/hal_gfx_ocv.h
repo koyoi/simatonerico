@@ -39,6 +39,8 @@ public:
 	void	point(jhl_xy_i& pos, int size = 1);
 	void	point(jhl_xy_i& pos, jhl_rgb c);
 	void	point(jhl_xy_i& pos, cv::Scalar color);
+	void	point(jhl_xy_i& pos, cv::Scalar* color);
+	void	point(jhl_xy_i& pos, cv::Vec3b* c);
 	void	line(jhl_xy_i& start, jhl_xy_i& end);
 	void	line_f(jhl_xy_i& start, jhl_xy_i& end);
 	void	line_h(unsigned int v, float h_start, float h_end);

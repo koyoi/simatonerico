@@ -58,16 +58,28 @@ point(jhl_xy_i& pos, jhl_rgb color) {
 		cv::Scalar(color.b, color.g, color.r),
 		0
 	);
+	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+	tgt[(int)(pos.x)] = cv::Vec3b(color.b, color.g, color.r);
+
+
 }
 
 void disp_ocv2::
 point(jhl_xy_i& pos, cv::Scalar color) {
-	cv::circle(img,
-		cv::Point(pos.x, pos.y),
-		1,
-		color,
-		0
-	);
+	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+	tgt[(int)(pos.x)] = cv::Vec3b(color.val[2], color.val[1], color.val[0]);
+}
+
+void disp_ocv2::
+point(jhl_xy_i& pos, cv::Scalar *color) {
+	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+	tgt[(int)(pos.x)] = cv::Vec3b(color->val[2], color->val[1], color->val[0]);
+}
+
+void disp_ocv2::
+point(jhl_xy_i& pos, cv::Vec3b* c) {
+	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+	tgt[(int)(pos.x)] = *c;
 }
 
 
@@ -104,7 +116,9 @@ point_z(jhl_xy_i& pos, float depth) {
 	if (0 <= pos.x && pos.x < window_size.x &&
 		0 <= pos.y && pos.y < window_size.y)
 	{
-		img_z.at<ushort>(pos.y, pos.x) = temp_z;
+//		img_z.at<ushort>(pos.y, pos.x) = temp_z;
+		ushort *tgt = img_z.ptr<ushort>(pos.y);
+		tgt[(int)(pos.x)] = temp_z;
 	}
 }
 

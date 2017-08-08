@@ -454,7 +454,6 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 
 	jhl_xyz ortho_pos;
 	jhl_xy  tex_pos;
-	cv::Scalar cv_color;
 	cv::Vec3b *src;
 
 	float x_all = p1.x - p0.x;
@@ -484,9 +483,7 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 		assert( 0 <= tex_pos.y || tex_pos.y < 256);
 
 		src = tgtTex -> ptr<cv::Vec3b>(tex_pos.y);	//j行目の先頭画素のポインタを取得
-		cv_color = src[(int)(tex_pos.x)];			//i番目にアクセス
-
-		painter->point(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), cv_color);
+		painter->point(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), &src[(int)(tex_pos.x)]);	//src[] i番目にアクセス
 	}
 
 	return;
@@ -671,136 +668,6 @@ int jhl3Dlib::draw(const object& mdl)
 		}
 		break;
 
-#if 0
-		case drawType_flat_z:				
-		{
-			for (int i = 0; i < tgtMdl->n_pol; i++)
-			{
-				t_poldef = &tgtMdl->poldef[i];
-
-				t_vert_disp[0] = transToDisp((*t_poldef)[0]);
-				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
-				t_vert_disp[2] = transToDisp((*t_poldef)[2]);
-
-				// 裏面ならスキップ
-				if (check_side(t_vert_disp) < 0)
-				{
-					continue;
-				}
-
-				// あたってる光の色の計算（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
-				calc_lighting(t_poldef);	// これに色を掛けるのだ
-
-				// 色設定 toria
-				if (mdl.attrib_override)
-				{
-					painter->set_fillColor(mdl.force_color * light_calced);
-				}
-				else
-				{
-					painter->set_fillColor(tgt_grp->color * light_calced);
-				}
-
-				// debug z map 見やすくするためだけのもの
-				min_max_update(t_vert_disp[0].z);			// 数字が大きい方が手前
-				min_max_update(t_vert_disp[1].z);
-				min_max_update(t_vert_disp[2].z);
-
-				// ポリゴン頂点、yの小さい方からソート
-				// yの上の方から描く（次に、左から右へ塗る）
-				sort_y(t_vert_disp, y_sort);	// t_vert_disp:対象のポリゴン	y_sort:頂点ソート結果（順番）
-				{
-					jhl_xyz rds[3] = { t_vert_disp[y_sort[0]], t_vert_disp[y_sort[1]],t_vert_disp[y_sort[2]] };	//(vec)R_Temp_Sorted
-
-					float delta_x01 = grad(rds[0], rds[1]);	// 三角形を書くにあたり、直線の傾き
-					float delta_x02 = grad(rds[0], rds[2]);
-					float delta_x12 = grad(rds[1], rds[2]);
-					float temp_x01 = rds[0].x;				// yが小さい頂点
-					float temp_x02 = rds[0].x;				// 　　2番目の
-					float temp_x12 = rds[1].x;				// 水平に塗っていくので、yが2番目の頂点からは、2-3番目の頂点を結ぶ
-
-					// todo 最初のラインが欠けるかも
-					jhl_xyz	scan_y[2];
-
-					int	y_all01 = (int)(rds[1].y - rds[0].y);
-					int	y_all02 = (int)(rds[2].y - rds[0].y);
-					int y_start0 = (int)rds[0].y;
-
-					for (int y = (int)rds[0].y; y < (int)rds[1].y; y++)
-					{
-						//					std::cout << "y00: " << y << ", x : " << temp_x01 << " - " << temp_x02 << std::endl;
-						//					painter->point(jhl_xy_i(temp_x01, y), 0);
-						//					painter->point(jhl_xy_i(temp_x02, y), 0);
-						painter->line_h(y, temp_x01, temp_x02);	// 色は一気に塗ってしまう
-
-						// z を塗る
-						// △のｙの小さい方から水平に塗ってゆく
-						// interpolate_line_to_non_persed : パースを殺した状態での座標、（ただし、デバイス変換は掛かってる）
-						// そこで、辺のどの辺（割合）か
-						scan_y[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,
-							rds[0], rds[1]);
-						scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,
-							rds[0], rds[2]);
-
-#if 0 
-						// 計算誤差でラインを飛ばしてしまう可能性があるので y を強制する
-						// 確認コード
-						y_[0] = p_wari[0].y;
-						y_[1] = p_wari[1].y;
-
-						if ((int)y_[0] != y || (int)y_[1] != y) {
-							int i = 0;	// ブレークポイントを置くためのダミー
-						}
-#endif
-
-						if (scan_y[0].x <= scan_y[1].x)
-						{
-							interpolate_line_to_non_persed_with_z_fill(scan_y[0], scan_y[1], y);
-						}
-						else
-						{
-							interpolate_line_to_non_persed_with_z_fill(scan_y[1], scan_y[0], y);
-						}
-
-						temp_x01 += delta_x01;
-						temp_x02 += delta_x02;
-					}
-
-					int	y_all12 = (int)(rds[2].y - rds[1].y);
-					int y_start1 = (int)rds[1].y;
-
-					for (int y = rds[1].y; y < rds[2].y - 1; y++)
-					{
-						//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
-						//					painter->point(jhl_xy_i(temp_x12, y), 0);
-						//					painter->point(jhl_xy_i(temp_x02, y), 0);
-						painter->line_h(y, temp_x12, temp_x02);
-
-						// z を塗る
-						scan_y[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,
-							rds[1], rds[2]);
-						scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,
-							rds[0], rds[2]);
-						if (scan_y[0].x <= scan_y[1].x)
-						{
-							interpolate_line_to_non_persed_with_z_fill(scan_y[0], scan_y[1], y);
-						}
-						else
-						{
-							interpolate_line_to_non_persed_with_z_fill(scan_y[1], scan_y[0], y);
-						}
-
-						temp_x12 += delta_x12;
-						temp_x02 += delta_x02;
-					}
-
-					// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
-				}
-			}
-			std::cout << "zmin,max = " << z_min << ", " << z_max << std::endl;
-		}
-		break;
-#endif
 		case drawType_flat_z:			// 単色ポリゴン、Z計算あり（todo Z比較）（光源あり、暗黙に裏面除外）;
 		case drawType_tex:				// テクスチャ有り;
 		{
@@ -833,10 +700,12 @@ int jhl3Dlib::draw(const object& mdl)
 					continue;
 				}
 
+				// todo 視界外の除去
+
 				// あたってる光の色の計算（フラットシェーディング、100%乱反射(面と視線の角度を考えない)）
 				calc_lighting(t_poldef);	// これに色を掛けるのだ
 
-											// 色設定 toria
+				// 色設定 toria
 				if (mdl.attrib_override)
 				{
 					painter->set_fillColor(mdl.force_color * light_calced);
@@ -882,10 +751,6 @@ int jhl3Dlib::draw(const object& mdl)
 		}
 		break;
 
-
-#if 0
-		case zソート
-#endif
 #if 0
 		case drawType_phong:				// フォンシェーディング
 			各頂点の法線 ≡ その頂点を共有する全ポリゴンの法線の平均
@@ -927,19 +792,17 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 	int	y_all02 = (int)(rds[2]->y - rds[0]->y);
 	int y_start0 = (int)rds[0]->y;
 
+	int	y_all12 = (int)(rds[2]->y - rds[1]->y);
+	int y_start1 = (int)rds[1]->y;
+
 	for (int y = (int)rds[0]->y; y < (int)rds[1]->y; y++)
 	{
-		// z を塗る
+		// z
 		// △のｙの小さい方から水平に塗ってゆく
 		// interpolate_line_to_non_persed : 正規化視台形中（パースを殺した状態で）での座標
 		// そこで、辺のどの辺（割合）か
 		scan_y[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,	*rds[0], *rds[1]);
 		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
-
-		// 色　フラットなので一気に塗る
-		painter->line_h(y, temp_x01, temp_x02);
-
-		// z
 		if (scan_y[0].x <= scan_y[1].x)
 		{
 			interpolate_line_to_non_persed_with_z_fill(scan_y[0], scan_y[1], y);
@@ -949,21 +812,21 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 			interpolate_line_to_non_persed_with_z_fill(scan_y[1], scan_y[0], y);
 		}
 
-		temp_x01 += delta_x01;
+
+		// 色　フラットなので一気に塗る
+		painter->line_h(y, temp_x01, temp_x02);
+		temp_x01 += delta_x01;	// 次のライン
 		temp_x02 += delta_x02;
 	}
 
-	int	y_all12 = (int)(rds[2]->y - rds[1]->y);
-	int y_start1 = (int)rds[1]->y;
-
 	for (int y = rds[1]->y; y < rds[2]->y - 1; y++)
 	{
-		//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
-		//					painter->point(jhl_xy_i(temp_x12, y), 0);
-		//					painter->point(jhl_xy_i(temp_x02, y), 0);
+		// color
 		painter->line_h(y, temp_x12, temp_x02);
+		temp_x12 += delta_x12;
+		temp_x02 += delta_x02;
 
-		// z を塗る
+		// z
 		scan_y[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,	*rds[1], *rds[2]);
 		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
 		if (scan_y[0].x <= scan_y[1].x)
@@ -974,9 +837,6 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 		{
 			interpolate_line_to_non_persed_with_z_fill(scan_y[1], scan_y[0], y);
 		}
-
-		temp_x12 += delta_x12;
-		temp_x02 += delta_x02;
 	}
 	// todo 最後のラインが欠けてる(上でループの最後が -1 。 はみ出し防止の安易な策)
 	return 0;	// とりあえず
@@ -1013,7 +873,7 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 		scan_y_tex[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,	rds_tex[0], rds_tex[1]);		// todo 座標とtex uv 計算、まとめる。毎ラインだし
 		scan_y_tex[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	rds_tex[0], rds_tex[2]);
 
-		if (scan_y[0].x <= scan_y[1].x)
+		if (scan_y[0].x <= scan_y[1].x)	// todo 大小関係はそのポリゴンをやってる間は変わらないはず？？
 		{
 			interpolate_line_to_non_persed_with_z_fill_tex(scan_y[0], scan_y[1], y, scan_y_tex[0], scan_y_tex[1]);
 		}
