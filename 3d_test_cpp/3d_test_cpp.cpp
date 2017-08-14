@@ -24,7 +24,7 @@ disp_ocv2	painter;
 
 jhl_xy_i window = { 640, 480 };
 
-#ifdef N2232
+#ifdef PC1
 const std::string data_basedir = { "C:\\soukoRW\\3d_test_cpp\\3d_test_cpp\\data" };
 #else
 const std::string data_basedir = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data" };
