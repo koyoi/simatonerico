@@ -83,12 +83,77 @@ point(jhl_xy_i& pos, cv::Vec3b* c) {
 }
 
 
-// todo 遅い
+#if 1
 void disp_ocv2::
 point_z(jhl_xy_i& pos, float depth) {
 	ushort temp_z;
 	static	float toria_z_min = 0.0;
 	static	float toria_z_max = 1.0;
+
+	// 範囲外チェック
+	if (!((0 <= pos.x && pos.x < window_size.x &&
+		0 <= pos.y && pos.y < window_size.y)))
+	{
+		return;
+	}
+
+	depth = -depth;	// z クリアを 0 fill にするため。マイナスを掛けると、手前:1 奥:-1（あとでunsignedにシフト）
+
+					// 飽和
+	if (depth > 1.0f)
+	{
+		//		assert(depth <= 1.0f);	// 偽となるとブレーク
+		depth = 1.0f;
+	};
+	if (depth < -1.0f)
+	{
+		//		assert(depth >= -1.0f);
+		depth = -1.0f;
+	};
+
+#if 0
+	// 見かけの都合で、適当にスケール
+	if (depth < toria_z_min)
+		depth = toria_z_min;
+	if (depth > toria_z_max)
+		depth = toria_z_max;
+
+	depth -= toria_z_min;
+	depth /= (toria_z_max - toria_z_min);
+	temp_z = (ushort)((depth /*+1*/) * 65536/*32768*/);
+#endif
+	temp_z = (ushort)((depth + 1) * (65536 / 2));
+
+	ushort *tgt_z = img_z.ptr<ushort>(pos.y);
+	ushort *p_z = &tgt_z[(int)(pos.x)];
+	if (*p_z < temp_z)
+	{
+
+		// todo テクスチャが透過の場合がある
+		*p_z = temp_z;
+
+		//  あとで
+		// 	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+		//	tgt[(int)(pos.x)] = cv::Vec3b(fill_color_cv[0], fill_color_cv[1], fill_color_cv[2]);
+	}
+}
+#endif
+
+
+bool disp_ocv2::
+point_z_test(jhl_xy_i& pos, float depth) {
+	ushort temp_z;
+	static	float toria_z_min = 0.0;
+	static	float toria_z_max = 1.0;
+
+	// 範囲外チェック
+	if( !((0 <= pos.x && pos.x < window_size.x &&
+		0 <= pos.y && pos.y < window_size.y)) )
+	{
+		return false;
+	}
+
+	depth = -depth;	// z クリアを 0 fill にするため。マイナスを掛けると、手前:1 奥:-1（あとでunsignedにシフト）
 
 	// 飽和
 	if (depth > 1.0f) 
@@ -102,6 +167,92 @@ point_z(jhl_xy_i& pos, float depth) {
 		depth = -1.0f;
 	};
 
+#if 0
+	// 見かけの都合で、適当にスケール
+	if (depth < toria_z_min)
+		depth = toria_z_min;
+	if (depth > toria_z_max)
+		depth = toria_z_max;
+
+	depth -= toria_z_min;
+	depth /= (toria_z_max - toria_z_min);
+	temp_z = (ushort)((depth /*+1*/) * 65536/*32768*/);
+#endif
+	temp_z = (ushort)((depth + 1) * (65536 / 2));
+
+	ushort *tgt_z = img_z.ptr<ushort>(pos.y);
+	ushort *p_z = &tgt_z[(int)(pos.x)];
+	if (*p_z < temp_z)
+	{
+
+		// テクスチャが透過の場合があるので、この関数ではテストのみ
+		//		*p_z = temp_z;
+		return true;
+
+		//  あとで
+		// 	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+		//	tgt[(int)(pos.x)] = cv::Vec3b(fill_color_cv[0], fill_color_cv[1], fill_color_cv[2]);
+	}
+	return false;
+}
+
+void disp_ocv2::
+point_z_set(jhl_xy_i& pos, float depth) {
+	ushort temp_z;
+
+	// 範囲外チェックは z_test で済んでいるので省略
+
+	depth = -depth;	// z クリアを 0 fill にするため。マイナスを掛けると、手前:1 奥:-1（あとでunsignedにシフト）
+
+	// todo これも省略できるはず
+	// 飽和
+	if (depth > 1.0f)
+	{
+		//		assert(depth <= 1.0f);	// 偽となるとブレーク
+		depth = 1.0f;
+	};
+	if (depth < -1.0f)
+	{
+		//		assert(depth >= -1.0f);
+		depth = -1.0f;
+	};
+
+	temp_z = (ushort)((depth + 1) * (65536 / 2));
+
+	ushort *tgt_z = img_z.ptr<ushort>(pos.y);
+	ushort *p_z = &tgt_z[(int)(pos.x)];
+	*p_z = temp_z;
+}
+
+
+void disp_ocv2::
+point_with_z(jhl_xy_i& pos, float depth) {
+	ushort temp_z;
+
+	// 範囲外チェック
+	if (!((0 <= pos.x && pos.x < window_size.x &&
+		0 <= pos.y && pos.y < window_size.y)))
+	{
+		return;
+	}
+
+	// 飽和
+	if (depth > 1.0f)
+	{
+		//		assert(depth <= 1.0f);	// 偽となるとブレーク
+		depth = 1.0f;
+	};
+	if (depth < -1.0f)
+	{
+		//		assert(depth >= -1.0f);
+		depth = -1.0f;
+	};
+
+	depth = -depth ;
+
+#if 0
+	static	float toria_z_min = -.8;
+	static	float toria_z_max = -.4;
 	// 見かけの都合で、適当にスケール
 	if (depth < toria_z_min)
 		depth = toria_z_min;
@@ -111,16 +262,21 @@ point_z(jhl_xy_i& pos, float depth) {
 	depth -= toria_z_min;
 	depth /= (toria_z_max - toria_z_min);
 
-	temp_z = (ushort)((depth /*+1*/) * 65536/*32768*/);
+//	temp_z = (ushort)(depth * 65536);
+#endif
+	temp_z = (ushort)((depth + 1) * (65536 / 2));
 
-	if (0 <= pos.x && pos.x < window_size.x &&
-		0 <= pos.y && pos.y < window_size.y)
+	ushort *tgt_z = img_z.ptr<ushort>(pos.y);
+	ushort *p_z = &tgt_z[(int)(pos.x)];
+	if (*p_z < temp_z)
 	{
-//		img_z.at<ushort>(pos.y, pos.x) = temp_z;
-		ushort *tgt = img_z.ptr<ushort>(pos.y);
-		tgt[(int)(pos.x)] = temp_z;
+		*p_z = temp_z;
+
+		cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
+		tgt[(int)(pos.x)] = cv::Vec3b(fill_color_cv[0], fill_color_cv[1], fill_color_cv[2] );
 	}
 }
+
 
 void disp_ocv2::
 line(jhl_xy_i& start, jhl_xy_i& end)
@@ -170,7 +326,6 @@ rectangle(jhl_xy_i& start, jhl_xy_i& end, jhl_rgb& color, int thickness)
 		CV_RGB(color.r, color.g, color.b), 
 		thickness);
 }
-
 
 
 void disp_ocv2::

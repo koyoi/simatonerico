@@ -409,6 +409,51 @@ jhl_xyz jhl3Dlib::interpolate_line_to_non_persed(const int point, const int line
 	return(rv);
 }
 
+
+void jhl3Dlib::interpolate_line_to_non_persed_tex(const int point, const int line_len, 
+	const jhl_xyz& p0, const jhl_xyz& p1,
+	const jhl_xyz& p0t, const jhl_xyz& p1t,
+	jhl_xyz& dest_p, jhl_xyz& dest_t)
+{
+	jhl_xyz rv;
+	if (line_len < 2) // 点が重なっているとき、ゼロ除算になってしまう箇所があるので回避
+	{
+		// 視点から見て重なってる時、手前の点を返す
+		// todo 大きい方が手前でいいんだっけ？
+
+		if (p0.z <= p1.z)	// p1のほうが手前
+		{
+			dest_p.z = p1.z;
+			dest_p.x = (p1.x / p1.z) * dest_p.z;
+			dest_p.y = (p1.y / p1.z) * dest_p.z;
+			dest_t.z = p1t.z;
+			dest_t.x = (p1t.x / p1t.z) * dest_t.z;
+			dest_t.y = (p1t.y / p1t.z) * dest_t.z;
+		}
+		else
+		{
+			dest_p.z = p0.z;
+			dest_p.x = (p0.x / p0.z) * dest_p.z;
+			dest_p.y = (p0.y / p0.z) * dest_p.z;
+			dest_t.z = p0t.z;
+			dest_t.x = (p0t.x / p0t.z) * dest_t.z;
+			dest_t.y = (p0t.y / p0t.z) * dest_p.z;
+		}
+	}
+	else
+	{
+		float wari = (float)point / line_len;
+
+		dest_p.z = 1 / ((1 - wari) / p0.z + wari / p1.z);
+		dest_p.x = ((p0.x / p0.z) * (1 - wari) + (p1.x / p1.z) * wari) * dest_p.z;
+		dest_p.y = ((p0.y / p0.z) * (1 - wari) + (p1.y / p1.z) * wari) * dest_p.z;
+		dest_t.z = 1 / ((1 - wari) / p0t.z + wari / p1t.z);
+		dest_t.x = ((p0t.x / p0t.z) * (1 - wari) + (p1t.x / p1t.z) * wari) * dest_t.z;
+		dest_t.y = ((p0t.y / p0t.z) * (1 - wari) + (p1t.y / p1t.z) * wari) * dest_t.z;
+	}
+}
+
+
 // ポリゴンをyでスライスしたとき、あるyのx_start - x_end の、zを塗る
 void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, const jhl_xyz& p1, int y_force)
 {
@@ -435,14 +480,12 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, con
 //		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z;	// 未使用
 //		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// 未使用
 
-		// todo z check
-		// 今はここで塗る (1pixずつ)
-		painter->point_z(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), 1.0f / ortho_pos.z);	// todo? 確認、z透視深度（つまり、逆数を取(って、far-nearで正規化の逆をす）ると実際の値）
-
+		// z check
+		// 1pixずつ塗るしか
 		// assert(y_force == (int)p0.y);	// 誤差蓄積などで y がずれる事があるか？　→　良くあるみたい
+		painter->point_with_z(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), 1.0f / ortho_pos.z);	
+		//   todo? 確認、z透視深度（つまり、逆数を取(って、far-nearで正規化の逆をす）ると実際の値）
 	}
-
-	return;
 }
 
 
@@ -455,6 +498,7 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 	jhl_xyz ortho_pos;
 	jhl_xy  tex_pos;
 	cv::Vec3b *src;
+	cv::Vec3b *c;
 
 	float x_all = p1.x - p0.x;
 
@@ -472,23 +516,32 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 //		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z; // 未使用
 //		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// 未使用
 
-		// todo z check
-		// 今はここで塗る (1pixずつ)
-		painter->point_z(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / ortho_pos.z);	// todo? 確認、z透視深度（つまり、逆数を取(って、far-nearで正規化の逆をす）ると実際の値）
+		// z check (1pixずつ)
+		if (painter->point_z_test(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / ortho_pos.z))
+		{
+			tex_pos.x = ((tex0.x / p0.z) * (1.0f - wari) + (tex1.x / p1.z) * wari) * ortho_pos.z;
+			tex_pos.y = ((tex0.y / p0.z) * (1.0f - wari) + (tex1.y / p1.z) * wari) * ortho_pos.z;
 
-		tex_pos.x = ((tex0.x / p0.z) * (1.0f - wari) + (tex1.x / p1.z) * wari) * ortho_pos.z;
-		tex_pos.y = ((tex0.y / p0.z) * (1.0f - wari) + (tex1.y / p1.z) * wari) * ortho_pos.z;
-		
-		assert( 0 <= tex_pos.x  || tex_pos.x < 256 );
-		assert( 0 <= tex_pos.y || tex_pos.y < 256);
+			assert(0 <= tex_pos.x || tex_pos.x < 256);
+			assert(0 <= tex_pos.y || tex_pos.y < 256);
 
-		src = tgtTex -> ptr<cv::Vec3b>(tex_pos.y);	//j行目の先頭画素のポインタを取得
-		painter->point(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), &src[(int)(tex_pos.x)]);	//src[] i番目にアクセス
+			// テクスチャ1ドット取ってくる
+			src = tgtTex->ptr<cv::Vec3b>(tex_pos.y);	// y行目の先頭画素のポインタを取得
+			c = &src[(int)(tex_pos.x)];					// src[] x番目にアクセス
+			if (is_not_transparent(c))
+			{
+				painter->point_z_set(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / ortho_pos.z);
+				painter->point(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), c);
+			}
+		}
 	}
-
-	return;
 }
 
+
+bool jhl3Dlib::is_not_transparent(cv::Vec3b *p)
+{
+	return true;	// todo 今は透明非対応
+}
 
 #if 0
 
@@ -591,9 +644,10 @@ int jhl3Dlib::draw(const object& mdl)
 		case drawType_flat:				// 単色ポリゴン（光源無視、暗黙に裏面除外）使い道あるんか
 		case drawType_flat_lighting:	// 単色ポリゴン（光源あり、暗黙に裏面除外）
 		{
-			for (int i = 0; i < tgtMdl->n_pol; i++)
+
+			for (int i = 0; i < tgt_grp->n_member; i++)
 			{
-				t_poldef = &tgtMdl->poldef[i];
+				t_poldef = &tgtMdl->poldef[tgt_grp->member[i]];
 
 				t_vert_disp[0] = transToDisp((*t_poldef)[0]);	// todo 高速化：　裏面スキップを先にできる
 				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
@@ -686,9 +740,9 @@ int jhl3Dlib::draw(const object& mdl)
 				tgtTex = &(t->Tex);
 			}
 
-			for (int i = 0; i < tgtMdl->n_pol; i++)
+			for (int i = 0; i < tgt_grp->n_member; i++)
 			{
-				t_poldef = &tgtMdl->poldef[i];
+				t_poldef = &tgtMdl->poldef[tgt_grp->member[i]];
 
 				t_vert_disp[0] = transToDisp((*t_poldef)[0]);
 				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
@@ -781,9 +835,9 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 	float delta_x01 = grad(*rds[0], *rds[1]);	// 三角形を書くにあたり、直線の傾き
 	float delta_x02 = grad(*rds[0], *rds[2]);
 	float delta_x12 = grad(*rds[1], *rds[2]);
-	float temp_x01 = rds[0]->x;				// yが小さい頂点
-	float temp_x02 = rds[0]->x;				// 　　2番目の
-	float temp_x12 = rds[1]->x;				// 水平に塗っていくので、yが2番目の頂点からは、2-3番目の頂点を結ぶ
+//	float temp_x01 = rds[0]->x;				// yが小さい頂点
+//	float temp_x02 = rds[0]->x;				// 　　2番目の
+//	float temp_x12 = rds[1]->x;				// 水平に塗っていくので、yが2番目の頂点からは、2-3番目の頂点を結ぶ
 
 											// todo 最初のラインが欠けるかも
 	jhl_xyz	scan_y[2];
@@ -814,19 +868,14 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 
 
 		// 色　フラットなので一気に塗る
-		painter->line_h(y, temp_x01, temp_x02);
-		temp_x01 += delta_x01;	// 次のライン
-		temp_x02 += delta_x02;
+	//	painter->line_h(y, temp_x01, temp_x02);
+	//	temp_x01 += delta_x01;	// 次のライン
+		//temp_x02 += delta_x02;
 	}
 
 	for (int y = rds[1]->y; y < rds[2]->y - 1; y++)
 	{
-		// color
-		painter->line_h(y, temp_x12, temp_x02);
-		temp_x12 += delta_x12;
-		temp_x02 += delta_x02;
-
-		// z
+		// z & color
 		scan_y[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,	*rds[1], *rds[2]);
 		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
 		if (scan_y[0].x <= scan_y[1].x)
@@ -867,13 +916,11 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 		// △のｙの小さい方から水平に塗ってゆく
 		// interpolate_line_to_non_persed : 正規化視台形中（パースを殺した状態で）での座標
 		// そこで、辺のどの辺（割合）か
-		scan_y[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,	*rds[0], *rds[1]);
-		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
+		// scan_y[], scan_y_tex[] 計算
+		interpolate_line_to_non_persed_tex((y - y_start0), y_all01,	*rds[0], *rds[1], rds_tex[0], rds_tex[1], scan_y[0], scan_y_tex[0] );
+		interpolate_line_to_non_persed_tex((y - y_start0), y_all02,	*rds[0], *rds[2], rds_tex[0], rds_tex[2], scan_y[1], scan_y_tex[1] );
 
-		scan_y_tex[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,	rds_tex[0], rds_tex[1]);		// todo 座標とtex uv 計算、まとめる。毎ラインだし
-		scan_y_tex[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	rds_tex[0], rds_tex[2]);
-
-		if (scan_y[0].x <= scan_y[1].x)	// todo 大小関係はそのポリゴンをやってる間は変わらないはず？？
+		if (scan_y[0].x <= scan_y[1].x)	// todo 大小関係はそのポリゴンをやってる間は変わらないはず
 		{
 			interpolate_line_to_non_persed_with_z_fill_tex(scan_y[0], scan_y[1], y, scan_y_tex[0], scan_y_tex[1]);
 		}
@@ -886,11 +933,8 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 	// 下半分（？）
 	for (int y = rds[1]->y; y < rds[2]->y - 1; y++)
 	{
-		scan_y[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,	*rds[1], *rds[2]);
-		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
-
-		scan_y_tex[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,	rds_tex[1], rds_tex[2]);
-		scan_y_tex[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	rds_tex[0], rds_tex[2]);
+		interpolate_line_to_non_persed_tex((y - y_start1), y_all12,	*rds[1], *rds[2], rds_tex[1], rds_tex[2], scan_y[0], scan_y_tex[0]);
+		interpolate_line_to_non_persed_tex((y - y_start0), y_all02,	*rds[0], *rds[2], rds_tex[0], rds_tex[2], scan_y[1], scan_y_tex[1]);
 
 		if (scan_y[0].x <= scan_y[1].x)
 		{

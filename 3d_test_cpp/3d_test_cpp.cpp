@@ -106,11 +106,13 @@ int main(int argc, char *argv[])
 	}
 	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : パースあり。
 
+
+	// 光源
 	jhl_rgb		light_ambient = { .5f, .5f, .5f };
 	dir_light	lights[ N_PARA_LIGHTS ];			// 並行光源　方向、色。方向は、正規化してないと不正になるかも
 
 	lights[0].dir = jhl_xyz(0.f, 1.f, -0.3f).normalize();
-	lights[0].col = jhl_rgb(0.2f, 0.2f, 0.8f);
+	lights[0].col = jhl_rgb(0.8f, 0.2f, 0.1f);
 
 	lights[1].dir = jhl_xyz(-0.4f, -1.0f, 0.2f).normalize();
 	lights[1].col = jhl_rgb(0.5f, 0.8f, 0.2f);

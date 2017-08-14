@@ -46,6 +46,9 @@ public:
 	void	line_h(unsigned int v, float h_start, float h_end);
 
 	void	point_z(jhl_xy_i& pos, float depth);
+	bool	point_z_test(jhl_xy_i& pos, float depth);
+	void	point_z_set(jhl_xy_i& pos, float depth);
+	void	point_with_z(jhl_xy_i& pos, float depth);
 
 	void	circle(jhl_xy_i& pos, int r, jhl_rgb& color, int thickness = 1);
 	void	rectangle(jhl_xy_i& start, jhl_xy_i& end, jhl_rgb& color, int thickness = 1);

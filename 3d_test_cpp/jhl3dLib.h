@@ -178,18 +178,19 @@ public:
 	static void		set_proj_mat(viewport_config& m_, bool ortho = false);
 	static void		set_disp_trans(const jhl_xy_i& window);
 
-//	static jhl_xyz	interpolate_line_to_non_persed(float wari, jhl_xyz& p0, jhl_xyz& p1);
 	static jhl_xyz	interpolate_line_to_non_persed(const int wari, const int all, const jhl_xyz& p0, const jhl_xyz& p1);
+	static void		interpolate_line_to_non_persed_tex(const int point, const int line_len, const jhl_xyz & p0, const jhl_xyz & p1, const jhl_xyz & p0t, const jhl_xyz & p1t, jhl_xyz & dest_p, jhl_xyz & dest_t);
 	static void		interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, const jhl_xyz& p1, int y_force);
 	static void		interpolate_line_to_non_persed_with_z_fill_tex(const jhl_xyz& p0, const jhl_xyz& p1, int y_force, jhl_xyz& tex0, jhl_xyz& tex1);
 
 	static float	check_side(jhl_xyz* verts);
+	static bool		is_not_transparent(cv::Vec3b *p);
 
 private:
 	static void		setTransMat(const matHomo4& mdl_mat);
 	static int		draw_a_polygon_flat(jhl_xyz ** rds, texUv ** texuv_sorted);
 	static int		draw_a_polygon_tex(jhl_xyz ** rds, texUv ** texuv_sorted);
-
+	
 // è∆ñæ
 public:
 	static jhl_rgb*		light_ambient;
