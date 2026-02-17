@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#ifndef USE_GDIPLUS
+
 #include "hal_gfx_ocv.h"
 #include <opencv2/opencv.hpp>
 
@@ -19,7 +21,7 @@ void disp_ocv2::
 disp_init(jhl_xy_i window_size_)
 {
 	window_size.x = window_size_.y;
-	window_size.y = window_size_.x;	// row ,column ‚Æ x,y ‚Í‚¢‚ê‚©‚í‚Á‚Ä‚é‚Á‚Û‚¢‚Ì‚¾
+	window_size.y = window_size_.x;	// row ,column ï¿½ï¿½ x,y ï¿½Í‚ï¿½ï¿½ê‚©ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Û‚ï¿½ï¿½Ì‚ï¿½
 	img = cv::Mat::zeros(window_size.x, window_size.y, CV_8UC3);
 	img_z = cv::Mat::zeros(window_size.x, window_size.y, CV_16U);
 }
@@ -35,7 +37,7 @@ disp_clear()
 void disp_ocv2::
 disp_show()
 {
-	cv::namedWindow("img", cv::WINDOW_AUTOSIZE );	// auto ‚Æ‚ÍAƒRƒ“ƒeƒ“ƒc‚ÌƒTƒCƒY‚É©“®•ÏX‚ÌˆÓ–¡
+	cv::namedWindow("img", cv::WINDOW_AUTOSIZE );	// auto ï¿½Æ‚ÍAï¿½Rï¿½ï¿½ï¿½eï¿½ï¿½ï¿½cï¿½ÌƒTï¿½Cï¿½Yï¿½Éï¿½ï¿½ï¿½ï¿½ÏXï¿½ÌˆÓ–ï¿½
 	cv::namedWindow("img_z", cv::WINDOW_AUTOSIZE );
 }
 
@@ -90,19 +92,19 @@ point_z(jhl_xy_i& pos, float depth) {
 	static	float toria_z_min = 0.0;
 	static	float toria_z_max = 1.0;
 
-	// ”ÍˆÍŠOƒ`ƒFƒbƒN
+	// ï¿½ÍˆÍŠOï¿½`ï¿½Fï¿½bï¿½N
 	if (!((0 <= pos.x && pos.x < window_size.x &&
 		0 <= pos.y && pos.y < window_size.y)))
 	{
 		return;
 	}
 
-	depth = -depth;	// z ƒNƒŠƒA‚ğ 0 fill ‚É‚·‚é‚½‚ßBƒ}ƒCƒiƒX‚ğŠ|‚¯‚é‚ÆAè‘O:1 ‰œ:-1i‚ ‚Æ‚Åunsigned‚ÉƒVƒtƒgj
+	depth = -depth;	// z ï¿½Nï¿½ï¿½ï¿½Aï¿½ï¿½ 0 fill ï¿½É‚ï¿½ï¿½é‚½ï¿½ßBï¿½}ï¿½Cï¿½iï¿½Xï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½ÆAï¿½ï¿½O:1 ï¿½ï¿½:-1ï¿½iï¿½ï¿½ï¿½Æ‚ï¿½unsignedï¿½ÉƒVï¿½tï¿½gï¿½j
 
-					// –O˜a
+					// ï¿½Oï¿½a
 	if (depth > 1.0f)
 	{
-		//		assert(depth <= 1.0f);	// ‹U‚Æ‚È‚é‚ÆƒuƒŒ[ƒN
+		//		assert(depth <= 1.0f);	// ï¿½Uï¿½Æ‚È‚ï¿½Æƒuï¿½ï¿½ï¿½[ï¿½N
 		depth = 1.0f;
 	};
 	if (depth < -1.0f)
@@ -112,7 +114,7 @@ point_z(jhl_xy_i& pos, float depth) {
 	};
 
 #if 0
-	// Œ©‚©‚¯‚Ì“s‡‚ÅA“K“–‚ÉƒXƒP[ƒ‹
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì“sï¿½ï¿½ï¿½ÅAï¿½Kï¿½ï¿½ï¿½ÉƒXï¿½Pï¿½[ï¿½ï¿½
 	if (depth < toria_z_min)
 		depth = toria_z_min;
 	if (depth > toria_z_max)
@@ -129,10 +131,10 @@ point_z(jhl_xy_i& pos, float depth) {
 	if (*p_z < temp_z)
 	{
 
-		// todo ƒeƒNƒXƒ`ƒƒ‚ª“§‰ß‚Ìê‡‚ª‚ ‚é
+		// todo ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß‚Ìê‡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		*p_z = temp_z;
 
-		//  ‚ ‚Æ‚Å
+		//  ï¿½ï¿½ï¿½Æ‚ï¿½
 		// 	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
 		//	tgt[(int)(pos.x)] = cv::Vec3b(fill_color_cv[0], fill_color_cv[1], fill_color_cv[2]);
 	}
@@ -146,19 +148,19 @@ point_z_test(jhl_xy_i& pos, float depth) {
 	static	float toria_z_min = 0.0;
 	static	float toria_z_max = 1.0;
 
-	// ”ÍˆÍŠOƒ`ƒFƒbƒN
+	// ï¿½ÍˆÍŠOï¿½`ï¿½Fï¿½bï¿½N
 	if( !((0 <= pos.x && pos.x < window_size.x &&
 		0 <= pos.y && pos.y < window_size.y)) )
 	{
 		return false;
 	}
 
-	depth = -depth;	// z ƒNƒŠƒA‚ğ 0 fill ‚É‚·‚é‚½‚ßBƒ}ƒCƒiƒX‚ğŠ|‚¯‚é‚ÆAè‘O:1 ‰œ:-1i‚ ‚Æ‚Åunsigned‚ÉƒVƒtƒgj
+	depth = -depth;	// z ï¿½Nï¿½ï¿½ï¿½Aï¿½ï¿½ 0 fill ï¿½É‚ï¿½ï¿½é‚½ï¿½ßBï¿½}ï¿½Cï¿½iï¿½Xï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½ÆAï¿½ï¿½O:1 ï¿½ï¿½:-1ï¿½iï¿½ï¿½ï¿½Æ‚ï¿½unsignedï¿½ÉƒVï¿½tï¿½gï¿½j
 
-	// –O˜a
+	// ï¿½Oï¿½a
 	if (depth > 1.0f) 
 	{ 
-//		assert(depth <= 1.0f);	// ‹U‚Æ‚È‚é‚ÆƒuƒŒ[ƒN
+//		assert(depth <= 1.0f);	// ï¿½Uï¿½Æ‚È‚ï¿½Æƒuï¿½ï¿½ï¿½[ï¿½N
 		depth = 1.0f; 
 	};
 	if (depth < -1.0f) 
@@ -168,7 +170,7 @@ point_z_test(jhl_xy_i& pos, float depth) {
 	};
 
 #if 0
-	// Œ©‚©‚¯‚Ì“s‡‚ÅA“K“–‚ÉƒXƒP[ƒ‹
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì“sï¿½ï¿½ï¿½ÅAï¿½Kï¿½ï¿½ï¿½ÉƒXï¿½Pï¿½[ï¿½ï¿½
 	if (depth < toria_z_min)
 		depth = toria_z_min;
 	if (depth > toria_z_max)
@@ -185,11 +187,11 @@ point_z_test(jhl_xy_i& pos, float depth) {
 	if (*p_z < temp_z)
 	{
 
-		// ƒeƒNƒXƒ`ƒƒ‚ª“§‰ß‚Ìê‡‚ª‚ ‚é‚Ì‚ÅA‚±‚ÌŠÖ”‚Å‚ÍƒeƒXƒg‚Ì‚İ
+		// ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß‚Ìê‡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ÅAï¿½ï¿½ï¿½ÌŠÖï¿½ï¿½Å‚Íƒeï¿½Xï¿½gï¿½Ì‚ï¿½
 		//		*p_z = temp_z;
 		return true;
 
-		//  ‚ ‚Æ‚Å
+		//  ï¿½ï¿½ï¿½Æ‚ï¿½
 		// 	cv::Vec3b *tgt = img.ptr<cv::Vec3b>(pos.y);
 		//	tgt[(int)(pos.x)] = cv::Vec3b(fill_color_cv[0], fill_color_cv[1], fill_color_cv[2]);
 	}
@@ -200,15 +202,15 @@ void disp_ocv2::
 point_z_set(jhl_xy_i& pos, float depth) {
 	ushort temp_z;
 
-	// ”ÍˆÍŠOƒ`ƒFƒbƒN‚Í z_test ‚ÅÏ‚ñ‚Å‚¢‚é‚Ì‚ÅÈ—ª
+	// ï¿½ÍˆÍŠOï¿½`ï¿½Fï¿½bï¿½Nï¿½ï¿½ z_test ï¿½ÅÏ‚ï¿½Å‚ï¿½ï¿½ï¿½Ì‚ÅÈ—ï¿½
 
-	depth = -depth;	// z ƒNƒŠƒA‚ğ 0 fill ‚É‚·‚é‚½‚ßBƒ}ƒCƒiƒX‚ğŠ|‚¯‚é‚ÆAè‘O:1 ‰œ:-1i‚ ‚Æ‚Åunsigned‚ÉƒVƒtƒgj
+	depth = -depth;	// z ï¿½Nï¿½ï¿½ï¿½Aï¿½ï¿½ 0 fill ï¿½É‚ï¿½ï¿½é‚½ï¿½ßBï¿½}ï¿½Cï¿½iï¿½Xï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½ÆAï¿½ï¿½O:1 ï¿½ï¿½:-1ï¿½iï¿½ï¿½ï¿½Æ‚ï¿½unsignedï¿½ÉƒVï¿½tï¿½gï¿½j
 
-	// todo ‚±‚ê‚àÈ—ª‚Å‚«‚é‚Í‚¸
-	// –O˜a
+	// todo ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È—ï¿½ï¿½Å‚ï¿½ï¿½ï¿½Í‚ï¿½
+	// ï¿½Oï¿½a
 	if (depth > 1.0f)
 	{
-		//		assert(depth <= 1.0f);	// ‹U‚Æ‚È‚é‚ÆƒuƒŒ[ƒN
+		//		assert(depth <= 1.0f);	// ï¿½Uï¿½Æ‚È‚ï¿½Æƒuï¿½ï¿½ï¿½[ï¿½N
 		depth = 1.0f;
 	};
 	if (depth < -1.0f)
@@ -229,17 +231,17 @@ void disp_ocv2::
 point_with_z(jhl_xy_i& pos, float depth) {
 	ushort temp_z;
 
-	// ”ÍˆÍŠOƒ`ƒFƒbƒN
+	// ï¿½ÍˆÍŠOï¿½`ï¿½Fï¿½bï¿½N
 	if (!((0 <= pos.x && pos.x < window_size.x &&
 		0 <= pos.y && pos.y < window_size.y)))
 	{
 		return;
 	}
 
-	// –O˜a
+	// ï¿½Oï¿½a
 	if (depth > 1.0f)
 	{
-		//		assert(depth <= 1.0f);	// ‹U‚Æ‚È‚é‚ÆƒuƒŒ[ƒN
+		//		assert(depth <= 1.0f);	// ï¿½Uï¿½Æ‚È‚ï¿½Æƒuï¿½ï¿½ï¿½[ï¿½N
 		depth = 1.0f;
 	};
 	if (depth < -1.0f)
@@ -253,7 +255,7 @@ point_with_z(jhl_xy_i& pos, float depth) {
 #if 0
 	static	float toria_z_min = -.8;
 	static	float toria_z_max = -.4;
-	// Œ©‚©‚¯‚Ì“s‡‚ÅA“K“–‚ÉƒXƒP[ƒ‹
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì“sï¿½ï¿½ï¿½ÅAï¿½Kï¿½ï¿½ï¿½ÉƒXï¿½Pï¿½[ï¿½ï¿½
 	if (depth < toria_z_min)
 		depth = toria_z_min;
 	if (depth > toria_z_max)
@@ -280,7 +282,7 @@ point_with_z(jhl_xy_i& pos, float depth) {
 
 void disp_ocv2::
 line(jhl_xy_i& start, jhl_xy_i& end)
-//	“n‚·ƒAƒhƒŒƒX‚ÍƒfƒBƒXƒvƒŒƒCÀ•W
+//	ï¿½nï¿½ï¿½ï¿½Aï¿½hï¿½ï¿½ï¿½Xï¿½Íƒfï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½W
 {
 	cv::line(img,
 		cv::Point(start.x, start.y),
@@ -290,10 +292,10 @@ line(jhl_xy_i& start, jhl_xy_i& end)
 	);
 }
 
-// line‚Å‚ÌfillŒü‚¯(Fw’è‚ªfill)
+// lineï¿½Å‚ï¿½fillï¿½ï¿½ï¿½ï¿½(ï¿½Fï¿½wï¿½è‚ªfill)
 void disp_ocv2::
 line_f(jhl_xy_i& start, jhl_xy_i& end)
-//	“n‚·ƒAƒhƒŒƒX‚ÍƒfƒBƒXƒvƒŒƒCÀ•W
+//	ï¿½nï¿½ï¿½ï¿½Aï¿½hï¿½ï¿½ï¿½Xï¿½Íƒfï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½W
 {
 	cv::line(img,
 		cv::Point(start.x, start.y),
@@ -306,7 +308,7 @@ line_f(jhl_xy_i& start, jhl_xy_i& end)
 void disp_ocv2::
 line_h(unsigned int v, float h_start, float h_end)
 {
-	line_f(jhl_xy_i(h_start +0.5f , v), jhl_xy_i(h_end+0.5f, v));	// ‚È‚ñ‚¿‚á‚Á‚ÄlÌŒÜ“ü
+	line_f(jhl_xy_i(h_start +0.5f , v), jhl_xy_i(h_end+0.5f, v));	// ï¿½È‚ñ‚¿‚ï¿½ï¿½ï¿½Älï¿½ÌŒÜ“ï¿½
 //	line(jhl_xy_i(h_start, v), jhl_xy_i(h_end, v));
 }
 
@@ -314,7 +316,7 @@ line_h(unsigned int v, float h_start, float h_end)
 void disp_ocv2::
 circle(jhl_xy_i& pos, int radius, jhl_rgb& color, int thickness)
 {
-	cv::circle(img, cv::Point(pos.x, pos.y), radius, CV_RGB(color.r, color.g, color.b), thickness); // È—ªƒpƒ‰ƒ[ƒ^—L‚è
+	cv::circle(img, cv::Point(pos.x, pos.y), radius, CV_RGB(color.r, color.g, color.b), thickness); // ï¿½È—ï¿½ï¿½pï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½^ï¿½Lï¿½ï¿½
 }
 
 void disp_ocv2::
@@ -334,7 +336,7 @@ putText(const char* s, jhl_xy_i& pos, jhl_rgb& color)
 	cv::putText(img, s, cv::Point(pos.x, pos.y),
 		font_name,
 		font_size,
-		CV_RGB(color.r*255, color.g*255, color.b*255),	// todo •ÏŠ·ŠÖ”“I‚È
+		CV_RGB(color.r*255, color.g*255, color.b*255),	// todo ï¿½ÏŠï¿½ï¿½Öï¿½ï¿½Iï¿½ï¿½
 		/*thickness*/1,
 		CV_AA);
 }
@@ -351,3 +353,4 @@ void disp_ocv2::disp_destroy()
 	cv::destroyAllWindows();
 }
 
+#endif // !USE_GDIPLUS

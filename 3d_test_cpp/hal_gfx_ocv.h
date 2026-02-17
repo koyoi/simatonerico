@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef USE_GDIPLUS
+
 #include "hal_graphics.h"
 #include <opencv2/opencv.hpp>
 
@@ -62,4 +64,4 @@ public:
 
 };
 
-
+#endif // !USE_GDIPLUS

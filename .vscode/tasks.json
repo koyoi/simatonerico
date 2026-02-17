@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Debug x64",
+            "type": "shell",
+            "command": "&",
+            "args": [
+                "'C:/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/MSBuild.exe'",
+                "'${workspaceFolder}/3d_test_cpp/3d_test_cpp.vcxproj'",
+                "-p:Configuration=Debug",
+                "-p:Platform=x64"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile",
+            "detail": "MSBuild Debug x64"
+        }
+    ]
+}

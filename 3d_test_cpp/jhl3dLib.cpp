@@ -3,12 +3,12 @@
 #include "jhl3dLib.h"
 #include "readData.h"
 
-
-#include <windows.h>	// ŠÔŒv‘ª—p
+#include <cassert>
+#include <windows.h>	// æ™‚é–“è¨ˆæ¸¬ç”¨
 
 
 /*
-ƒƒ‚
+ï¿½ï¿½ï¿½ï¿½
 https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 */
 
@@ -16,29 +16,37 @@ https://www.ogis-ri.co.jp/otc/hiroba/technical/CppDesignNote/
 
 En_draw_type	jhl3Dlib::draw_type = drawType_flat;
 modelData*		jhl3Dlib::tgtMdl;
+#ifdef USE_GDIPLUS
+Gdiplus::Bitmap*	jhl3Dlib::tgtTex;
+#else
 cv::Mat*		jhl3Dlib::tgtTex;
+#endif
 
 jhl_rgb*		jhl3Dlib::light_ambient;
 dir_light*		jhl3Dlib::light_directional;
 int				jhl3Dlib::num_light_dir;
-jhl_rgb			jhl3Dlib::light_calced;		// —LŒø‚È‘SŒõŒ¹‚ÆA–Ê‚ÌŒX‚«‚ğl‚¦‚½‚à‚ÌB
+jhl_rgb			jhl3Dlib::light_calced;		// ï¿½Lï¿½ï¿½ï¿½È‘Sï¿½ï¿½ï¿½ï¿½ï¿½ÆAï¿½Ê‚ÌŒXï¿½ï¿½ï¿½ï¿½ï¿½lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÌB
 
 jhl_xy_i		jhl3Dlib::display;
 viewport_config	jhl3Dlib::vp;
 
-matHomo4		jhl3Dlib::view_mat;		//	ƒrƒ…[•ÏŠ·(ƒ‚ƒfƒ‹•ÏŠ·‚Í tgtMdl ‚¿)
-matHomo4_full	jhl3Dlib::proj_mat;		//	“Š‰e•ÏŠ·
+matHomo4		jhl3Dlib::view_mat;		//	ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½(ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½ÏŠï¿½ï¿½ï¿½ tgtMdl ï¿½ï¿½ï¿½ï¿½)
+matHomo4_full	jhl3Dlib::proj_mat;		//	ï¿½ï¿½ï¿½eï¿½ÏŠï¿½
 #ifdef DISP_MAT_KAKIKUDASHI
-matHomo4		jhl3Dlib::disp_mat;		//	ƒfƒBƒXƒvƒŒƒC•ÏŠ·
+matHomo4		jhl3Dlib::disp_mat;		//	ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ÏŠï¿½
 #endif
 
-matHomo4 		jhl3Dlib::modelViewMat;	// ƒ‚ƒfƒ‹ƒrƒ…[•ÏŠ·
-matHomo4_full	jhl3Dlib::transMat;		// ƒ‚ƒfƒ‹ƒrƒ…[•ÏŠ·‚©‚çƒfƒBƒXƒvƒŒƒC•ÏŠ·‚Ü‚ÅŠÜ‚Ş“Š‰es—ñiˆê”Ê–¼Hj
+matHomo4 		jhl3Dlib::modelViewMat;	// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½
+matHomo4_full	jhl3Dlib::transMat;		// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½ï¿½ï¿½ï¿½ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ÏŠï¿½ï¿½Ü‚ÅŠÜ‚Ş“ï¿½ï¿½eï¿½sï¿½ï¿½iï¿½ï¿½Ê–ï¿½ï¿½Hï¿½j
 
-disp_ocv2*		jhl3Dlib::painter;		// todo ‰½‚Åƒ|ƒCƒ“ƒ^‚É‚µ‚Ä‚é‚ñ‚¾‚Á‚¯H
+#ifdef USE_GDIPLUS
+disp_gdiplus*	jhl3Dlib::painter;
+#else
+disp_ocv2*		jhl3Dlib::painter;
+#endif
 
 
-// ƒfƒBƒXƒvƒŒƒCÀ•W‚Ö‚Ì•ÏŠ·‚Ég—p(ƒLƒƒƒbƒVƒ…‚È‚Ç)
+// ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Wï¿½Ö‚Ì•ÏŠï¿½ï¿½Égï¿½p(ï¿½Lï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½È‚ï¿½)
 jhl_xyz*		jhl3Dlib::p_TTDcache;
 int				jhl3Dlib::TTDcacheSize;
 char*			jhl3Dlib::mdl_name;
@@ -47,7 +55,7 @@ int	cache_miss;
 int	cache_total;
 
 
-// toria zƒ`ƒFƒbƒN
+// toria zï¿½`ï¿½Fï¿½bï¿½N
 static void min_max_update(float& tgt);
 static void min_max_clear();
 float z_min;
@@ -66,7 +74,7 @@ static float grad(jhl_xyz& p0, jhl_xyz& p1)
 {
 	if ((p1.y - p0.y) == 0)
 	{
-		// •ª•êƒ[ƒ
+		// ï¿½ï¿½ï¿½ï¿½[ï¿½ï¿½
 		std::cout << "div by zero!" << std::endl;
 		return((float)((p1.x - p0.x) / (0.0001)));	// todo toria
 	}
@@ -80,7 +88,7 @@ static void sort_y( jhl_xyz* points, int* y_sort )
 {
 	if (points[y_sort[1]].y > points[y_sort[2]].y)
 	{
-		swap(y_sort[1], y_sort[2]);		// y_sort[] ‚Ì’†g‚Í“s“x‰Šú‰»‚µ‚È‚¢‚Å‚¢‚¢‚Ì‚¾
+		swap(y_sort[1], y_sort[2]);		// y_sort[] ï¿½Ì’ï¿½ï¿½gï¿½Í“sï¿½xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½Å‚ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
 	}
 	if (points[y_sort[0]].y > points[y_sort[1]].y)
 	{
@@ -98,14 +106,14 @@ static void sort_y( jhl_xyz* points, int* y_sort )
 
 //-----------------------------------------------------------
 
-// •\— ”»’è
-//	“n‚·‚Ì‚Í‚ÍƒfƒBƒXƒvƒŒƒCÀ•W
-// ƒJƒƒ‰‚Ì•û‚ğŒü‚¢‚Ä‚¢‚é‚Æ³B
+// ï¿½\ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//	ï¿½nï¿½ï¿½ï¿½Ì‚Í‚Íƒfï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½W
+// ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½Ì•ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Æï¿½ï¿½B
 float jhl3Dlib::check_side(jhl_xyz* verts)
 {
-	// ƒ|ƒŠƒSƒ“‚Ì’¸“_ verts[3] ‚Ìì‚é–ÊƒxƒNƒgƒ‹ v1=p1-p0, v2=p2-p1 ‚Ì–@üƒxƒNƒgƒ‹‚ªA
-	// ‹ü(ƒJƒƒ‰•ÏŠ·Œã‚È‚Ì‚ÅA[0,0,-1]) ‚ÆŒü‚«‡‚¤‚©H
-	// Å“K‰»Ï‚İŒ‹‰Ê
+	// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ì’ï¿½ï¿½_ verts[3] ï¿½Ìï¿½ï¿½Êƒxï¿½Nï¿½gï¿½ï¿½ v1=p1-p0, v2=p2-p1 ï¿½Ì–@ï¿½ï¿½ï¿½xï¿½Nï¿½gï¿½ï¿½ï¿½ï¿½ï¿½A
+	// ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ÏŠï¿½ï¿½ï¿½È‚Ì‚ÅA[0,0,-1]) ï¿½ÆŒï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½H
+	// ï¿½Å“Kï¿½ï¿½ï¿½Ï‚İŒï¿½ï¿½ï¿½
 
 	// jhl_xyz v1 = verts[1] - verts[0];
 	// jhl_xyz v2 = verts[2] - verts[1];
@@ -119,11 +127,11 @@ float jhl3Dlib::check_side(jhl_xyz* verts)
 
 
 
-// ‚ ‚½‚éŒõ‚ÌF‚ğŒvZ
-// 	set_tgt_pObj(tgtMdl->verts);	// ŒãX‚ÌŒvZ‚ğƒ‚ƒfƒ‹.ƒ|ƒŠƒSƒ“”Ô† ‚¾‚¯‚Åˆø‚¯‚é‚æ‚¤‚É
-// ‚Å‘ÎÛ‚Ìƒ‚ƒfƒ‹‚ªƒZƒbƒgÏ‚İ‚Å‚ ‚é‚±‚ÆBtodo Šm”Fo—ˆ‚é‚æ‚¤‚É
-// todo À•WŒn@“§‹•ÏŠ·‘O‚ÉŒvZ‚µ‚È‚­‚Ä‚Í‚È‚ç‚È‚¢‚Ì‚Å‚ÍH
-// ŠÂ‹«Œõ{•½sŒõ(–Ê‚Æ‚Ì“àÏ‚ğæ‚é)B•Ô’l‚ÆA–Ê‚ÌF‚ğŠ|‚¯‚Ä‚Â‚©‚¤
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÌFï¿½ï¿½ï¿½vï¿½Z
+// 	set_tgt_pObj(tgtMdl->verts);	// ï¿½ï¿½Xï¿½ÌŒvï¿½Zï¿½ï¿½ï¿½ï¿½ï¿½fï¿½ï¿½.ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ôï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Åˆï¿½ï¿½ï¿½ï¿½ï¿½æ‚¤ï¿½ï¿½
+// ï¿½Å‘ÎÛ‚Ìƒï¿½ï¿½fï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½bï¿½gï¿½Ï‚İ‚Å‚ï¿½ï¿½é‚±ï¿½ÆBtodo ï¿½mï¿½Fï¿½oï¿½ï¿½ï¿½ï¿½æ‚¤ï¿½ï¿½
+// todo ï¿½ï¿½ï¿½Wï¿½nï¿½@ï¿½ï¿½ï¿½ï¿½ï¿½ÏŠï¿½ï¿½Oï¿½ÉŒvï¿½Zï¿½ï¿½ï¿½È‚ï¿½ï¿½Ä‚Í‚È‚ï¿½È‚ï¿½ï¿½Ì‚Å‚ÍH
+// ï¿½Â‹ï¿½ï¿½ï¿½ï¿½{ï¿½ï¿½ï¿½sï¿½ï¿½(ï¿½Ê‚Æ‚Ì“ï¿½ï¿½Ï‚ï¿½ï¿½ï¿½ï¿½)ï¿½Bï¿½Ô’lï¿½ÆAï¿½Ê‚ÌFï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½Ä‚Â‚ï¿½ï¿½ï¿½
 //jhl_rgb jhl3Dlib::calc_lighting(pol_def* pol)
 void jhl3Dlib::calc_lighting(pol_def* pol)
 {
@@ -132,23 +140,23 @@ void jhl3Dlib::calc_lighting(pol_def* pol)
 //	jhl_rgb rv = *light_ambient;
 	light_calced = *light_ambient;
 
-	// ’–Ú‚Ìƒ|ƒŠƒSƒ“‚Ì–@ü
+	// ï¿½ï¿½ï¿½Ú‚Ìƒ|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ì–@ï¿½ï¿½
 	jhl_xyz v1 = tgtMdl->verts[ (*pol)[1] ] - tgtMdl->verts[ (*pol)[0] ];
 	jhl_xyz v2 = tgtMdl->verts[ (*pol)[2] ] - tgtMdl->verts[ (*pol)[1] ];
 	
-	jhl_xyz n = modelViewMat * (v1 * v2);	// ƒxƒNƒgƒ‹Ï
+	jhl_xyz n = modelViewMat * (v1 * v2);	// ï¿½xï¿½Nï¿½gï¿½ï¿½ï¿½ï¿½
 	n = n.normalize();
 
 	for (int i = 0; i < num_light_dir; i++)
 	{
-		float coeff = -n.dot( light_directional[i].dir);	// “–‘RA— ‚©‚ç‚Ì“Š‰e‚Í–³‹
+		float coeff = -n.dot( light_directional[i].dir);	// ï¿½ï¿½ï¿½Rï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì“ï¿½ï¿½eï¿½Í–ï¿½ï¿½ï¿½
 		if (coeff > 0)
 		{
 			light_calced += light_directional[i].col * coeff;
 		}
 	}
 	
-	// todo toriaezu ‚P‚ÅƒNƒŠƒbƒv
+	// todo toriaezu ï¿½Pï¿½ÅƒNï¿½ï¿½ï¿½bï¿½v
 	if( light_calced.r > 1.0f ){  light_calced.r = 1.0f; }
 	if( light_calced.g > 1.0f ){  light_calced.g = 1.0f; }
 	if( light_calced.b > 1.0f ){  light_calced.b = 1.0f; }
@@ -159,16 +167,16 @@ void jhl3Dlib::calc_lighting(pol_def* pol)
 void jhl3Dlib::setTgtObj(const object & tgt)
 {
 	tgtMdl = tgt.p_model;
-	setTransMat(tgt.model_mat);	// ƒ‚ƒfƒ‹ƒrƒ…[•ÏŠ·`ƒfƒBƒXƒvƒŒƒCÀ•W•ÏŠ·‚Ü‚Åˆê‹C‚ÉƒZƒbƒg
+	setTransMat(tgt.model_mat);	// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½ï¿½`ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Wï¿½ÏŠï¿½ï¿½Ü‚Åˆï¿½Cï¿½ÉƒZï¿½bï¿½g
 
 	transToDisp_cache_clear();
 }
 
 
-// ƒrƒ…[ƒ}ƒgƒŠƒNƒX¶¬
-// t : ‹ü•ûŒü‚Ì‹tƒxƒNƒgƒ‹
-// r : ‹ü‚ğ‚š•ûŒü‚Æ‚µ‚½‚Æ‚«‚ÌAx•ûŒü‚É“–‚½‚éƒxƒNƒgƒ‹
-// s : “¯Ay•ûŒü
+// ï¿½rï¿½ï¿½ï¿½[ï¿½}ï¿½gï¿½ï¿½ï¿½Nï¿½Xï¿½ï¿½ï¿½ï¿½
+// t : ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‹tï¿½xï¿½Nï¿½gï¿½ï¿½
+// r : ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ÌAxï¿½ï¿½ï¿½ï¿½ï¿½É“ï¿½ï¿½ï¿½ï¿½ï¿½xï¿½Nï¿½gï¿½ï¿½
+// s : ï¿½ï¿½ï¿½Ayï¿½ï¿½ï¿½ï¿½
 void jhl3Dlib::set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc)
 {
 	jhl_xyz t, r, s;
@@ -181,7 +189,7 @@ void jhl3Dlib::set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const 
 }
 
 
-// ƒfƒBƒXƒvƒŒƒCÀ•W‚Ö•ÏŠ·
+// ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Wï¿½Ö•ÏŠï¿½
 void jhl3Dlib::set_disp_trans(const jhl_xy_i& window_)
 {
 /*[ x/2   0   0  x/2 ]
@@ -202,7 +210,7 @@ void jhl3Dlib::set_disp_trans(const jhl_xy_i& window_)
 }
 
 
-#if 1	// ã‰º¶‰E‘ÎÌƒo[ƒWƒ‡ƒ“
+#if 1	// ï¿½ã‰ºï¿½ï¿½ï¿½Eï¿½ÎÌƒoï¿½[ï¿½Wï¿½ï¿½ï¿½ï¿½
 void jhl3Dlib::set_proj_mat(viewport_config & m_, bool ortho)
 {
 	vp = m_;
@@ -215,7 +223,7 @@ void jhl3Dlib::set_proj_mat(viewport_config & m_, bool ortho)
 	fn = vp.vp_far - vp.vp_near;
 
 	if (ortho) {
-		// “™Šp
+		// ï¿½ï¿½ï¿½p
 		mp.m[0 * 4 + 0] = (float)2 / rl;
 		mp.m[1 * 4 + 1] = (float)2 / tb;
 		mp.m[2 * 4 + 2] = (float)-2 / fn;
@@ -226,7 +234,7 @@ void jhl3Dlib::set_proj_mat(viewport_config & m_, bool ortho)
 	}
 	else
 	{
-		// ƒp[ƒX‚ ‚è
+		// ï¿½pï¿½[ï¿½Xï¿½ï¿½ï¿½ï¿½
 		mp.m[0 * 4 + 0] = (float)2 * vp.vp_near / rl;
 		mp.m[1 * 4 + 1] = (float)2 * vp.vp_near / tb;
 		mp.m[0 * 4 + 2] = (float)0;	// (vp.right + vp.left) / rl;
@@ -239,7 +247,7 @@ void jhl3Dlib::set_proj_mat(viewport_config & m_, bool ortho)
 	proj_mat = mp;
 }
 
-#else	// ‹‘äŒ`‚ªã‰º/¶‰E‘ÎÌ‚Å‚È‚¢ê‡Bi‚Ç‚¤g‚¤‚ÌH 3D‹Hj
+#else	// ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½ã‰º/ï¿½ï¿½ï¿½Eï¿½ÎÌ‚Å‚È‚ï¿½ï¿½ê‡ï¿½Bï¿½iï¿½Ç‚ï¿½ï¿½gï¿½ï¿½ï¿½ÌH 3Dï¿½ï¿½ï¿½Hï¿½j
 void jhl3Dlib::set_proj_mat_norm(viewport_config & m_)
 {
 	vp = m_;
@@ -285,11 +293,11 @@ void jhl3Dlib::set_proj_mat_ortho(viewport_config & m_)
 #endif
 
 
-// ƒfƒoƒCƒXÀ•W‚Ü‚Å•ÏŠ·‚·‚és—ñ‚ğ‹‚ß‚ÄƒZƒbƒg
-// ƒ[ƒ‚É‚È‚é‚Ì‚Æ‚©AÅ“K‰»‚·‚éB
-// c‚¯‚ÇAƒ‚ƒfƒ‹–ˆ‚É1‰ñ‚¾‚©‚çA‘å‚µ‚Ä‚ ‚è‚ª‚½‚­‚È‚¢‹C‚à‚·‚é
+// ï¿½fï¿½oï¿½Cï¿½Xï¿½ï¿½ï¿½Wï¿½Ü‚Å•ÏŠï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß‚ÄƒZï¿½bï¿½g
+// ï¿½[ï¿½ï¿½ï¿½É‚È‚ï¿½Ì‚Æ‚ï¿½ï¿½Aï¿½Å“Kï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B
+// ï¿½cï¿½ï¿½ï¿½ÇAï¿½ï¿½ï¿½fï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1ï¿½ñ‚¾‚ï¿½ï¿½ï¿½Aï¿½å‚µï¿½Ä‚ï¿½ï¿½è‚ªï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 /*
-maximaƒR[ƒh
+maximaï¿½Rï¿½[ï¿½h
 point1:matrix([x,y,z,1]);
 trans_rot1:matrix([tr00,tr01,tr02,0],[tr10,tr11,tr12,0],[tr20,tr21,tr22,0],[0,0,0,1]);
 trans1:matrix([1,0,0,tx1],[0,1,0,ty1],[0,0,1,yz1],[0,0,0,1]);
@@ -306,13 +314,13 @@ result:mat.point1;
 */
 void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 {
-	modelViewMat = view_mat*mdl_mat;	// mview x trans ƒ‚ƒfƒ‹ƒrƒ…[•ÏŠ·
+	modelViewMat = view_mat*mdl_mat;	// mview x trans ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½
 
 #ifdef DISP_MAT_KAKIKUDASHI
 	matHomo4_full m_proj_disp = proj_mat * disp_mat;
 //	std::cout << "a:" << std::endl << m_proj_disp << std::endl;
-#else	// ‘‚«‰º‚µ
-	matHomo4_full	m_proj_disp = proj_mat;	// todo À‚Íƒ[ƒ‘½‚¢... ‚¯‚ÇA’Pƒ‘SƒRƒs[‚Å\•ª‚©H
+#else	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	matHomo4_full	m_proj_disp = proj_mat;	// todo ï¿½ï¿½ï¿½Íƒ[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½... ï¿½ï¿½ï¿½ÇAï¿½Pï¿½ï¿½ï¿½Sï¿½Rï¿½sï¿½[ï¿½Å\ï¿½ï¿½ï¿½ï¿½ï¿½H
 	m_proj_disp.m[0 * 4 + 0] *= display.x;
 	m_proj_disp.m[1 * 4 + 1] *= display.y;
 	m_proj_disp.m[0 * 4 + 2] = m_proj_disp.m[3 * 4 + 2] * display.x;
@@ -326,7 +334,7 @@ void jhl3Dlib::setTransMat(const matHomo4 & mdl_mat)
 #if 0
 	 transMat = m_proj_disp * modelViewMat;
 	 // 
-#else	// ‘‚«‰º‚µ
+#else	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 /* maxima code4
 #m: modelViewMat
 #mt : m_proj_disp
@@ -375,17 +383,17 @@ result:mat.point1;
 }
 
 
-// ƒXƒNƒŠ[ƒ“À•Wã p0,p1 ‚Ì wari •ªŠ„Š„‡‚©‚çA3ŸŒ³‹óŠÔ“à‚ÌÀ•W‚ğŠ„‚èo‚·
-//   (ƒp[ƒX‚ªŠ|‚©‚é‘O‚ÌÀ•W‚ªæ‚ê‚é)
+// ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½ï¿½ p0,p1 ï¿½ï¿½ wari ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½A3ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô“ï¿½ï¿½Ìï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½ï¿½oï¿½ï¿½
+//   (ï¿½pï¿½[ï¿½Xï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½Oï¿½Ìï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 jhl_xyz jhl3Dlib::interpolate_line_to_non_persed(const int point, const int line_len, const jhl_xyz& p0, const jhl_xyz& p1)
 {
 	jhl_xyz rv;
-	if (line_len < 2) // “_‚ªd‚È‚Á‚Ä‚¢‚é‚Æ‚«Aƒ[ƒœZ‚É‚È‚Á‚Ä‚µ‚Ü‚¤‰ÓŠ‚ª‚ ‚é‚Ì‚Å‰ñ”ğ
+	if (line_len < 2) // ï¿½_ï¿½ï¿½ï¿½dï¿½È‚ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½Aï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½É‚È‚ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½Óï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚Å‰ï¿½ï¿½
 	{
-		// ‹“_‚©‚çŒ©‚Äd‚È‚Á‚Ä‚éAè‘O‚Ì“_‚ğ•Ô‚·
-		// todo ‘å‚«‚¢•û‚ªè‘O‚Å‚¢‚¢‚ñ‚¾‚Á‚¯H
+		// ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½çŒ©ï¿½Ädï¿½È‚ï¿½ï¿½Ä‚éï¿½Aï¿½ï¿½Oï¿½Ì“_ï¿½ï¿½Ô‚ï¿½
+		// todo ï¿½å‚«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Oï¿½Å‚ï¿½ï¿½ï¿½ï¿½ñ‚¾‚ï¿½ï¿½ï¿½ï¿½H
 		
-		if( p0.z <= p1.z )	// p1‚Ì‚Ù‚¤‚ªè‘O
+		if( p0.z <= p1.z )	// p1ï¿½Ì‚Ù‚ï¿½ï¿½ï¿½ï¿½ï¿½O
 		{
 			rv.z = p1.z;
 			rv.x = (p1.x / p1.z) * rv.z;
@@ -416,12 +424,12 @@ void jhl3Dlib::interpolate_line_to_non_persed_tex(const int point, const int lin
 	jhl_xyz& dest_p, jhl_xyz& dest_t)
 {
 	jhl_xyz rv;
-	if (line_len < 2) // “_‚ªd‚È‚Á‚Ä‚¢‚é‚Æ‚«Aƒ[ƒœZ‚É‚È‚Á‚Ä‚µ‚Ü‚¤‰ÓŠ‚ª‚ ‚é‚Ì‚Å‰ñ”ğ
+	if (line_len < 2) // ï¿½_ï¿½ï¿½ï¿½dï¿½È‚ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½Aï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½É‚È‚ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½Óï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚Å‰ï¿½ï¿½
 	{
-		// ‹“_‚©‚çŒ©‚Äd‚È‚Á‚Ä‚éAè‘O‚Ì“_‚ğ•Ô‚·
-		// todo ‘å‚«‚¢•û‚ªè‘O‚Å‚¢‚¢‚ñ‚¾‚Á‚¯H
+		// ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½çŒ©ï¿½Ädï¿½È‚ï¿½ï¿½Ä‚éï¿½Aï¿½ï¿½Oï¿½Ì“_ï¿½ï¿½Ô‚ï¿½
+		// todo ï¿½å‚«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Oï¿½Å‚ï¿½ï¿½ï¿½ï¿½ñ‚¾‚ï¿½ï¿½ï¿½ï¿½H
 
-		if (p0.z <= p1.z)	// p1‚Ì‚Ù‚¤‚ªè‘O
+		if (p0.z <= p1.z)	// p1ï¿½Ì‚Ù‚ï¿½ï¿½ï¿½ï¿½ï¿½O
 		{
 			dest_p.z = p1.z;
 			dest_p.x = (p1.x / p1.z) * dest_p.z;
@@ -454,12 +462,12 @@ void jhl3Dlib::interpolate_line_to_non_persed_tex(const int point, const int lin
 }
 
 
-// ƒ|ƒŠƒSƒ“‚ğy‚ÅƒXƒ‰ƒCƒX‚µ‚½‚Æ‚«A‚ ‚éy‚Ìx_start - x_end ‚ÌAz‚ğ“h‚é
+// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ï¿½yï¿½ÅƒXï¿½ï¿½ï¿½Cï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½yï¿½ï¿½x_start - x_end ï¿½ÌAzï¿½ï¿½hï¿½ï¿½
 void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, const jhl_xyz& p1, int y_force)
 {
-//	toria: p0.x < p1.x ‚Å—ˆ‚é
-//	‚Ù‚ñ‚Æ‚ÍŒÄ‚Ño‚µŒ³‚Å‚Í–³‚­‚Ä‚±‚¿‚ç‚Å‚â‚Á‚½•û‚ª‚¢‚¢‹C‚ª‚·‚é‚ñ‚¾‚¯‚Ç
-	// ‚¹‚Á‚©‚­QÆ‚Å“n‚µ‚Ä‚é‚Ì‚Å p0, p1 ‚ğ‚¤‚Ü‚­“ü‚ê‘Ö‚¦‚é•û–@...
+//	toria: p0.x < p1.x ï¿½Å—ï¿½ï¿½ï¿½
+//	ï¿½Ù‚ï¿½Æ‚ÍŒÄ‚Ñoï¿½ï¿½ï¿½ï¿½ï¿½Å‚Í–ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½Å‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ñ‚¾‚ï¿½ï¿½ï¿½
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Qï¿½Æ‚Å“nï¿½ï¿½ï¿½Ä‚ï¿½Ì‚ï¿½ p0, p1 ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½ï¿½ï¿½Ö‚ï¿½ï¿½ï¿½ï¿½ï¿½@...
 
 	jhl_xyz ortho_pos;
 
@@ -467,7 +475,7 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, con
 
 	if (x_all < 1)
 	{
-		// todo 1pix‚¾‚¯“h‚éH
+		// todo 1pixï¿½ï¿½ï¿½ï¿½ï¿½hï¿½ï¿½H
 		return;
 	}
 
@@ -477,14 +485,14 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, con
 	{
 		wari = (float)x / x_all;
 		ortho_pos.z = 1.0f / ((1.0f - wari) / p0.z + wari / p1.z);
-//		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z;	// –¢g—p
-//		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// –¢g—p
+//		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z;	// ï¿½ï¿½ï¿½gï¿½p
+//		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// ï¿½ï¿½ï¿½gï¿½p
 
 		// z check
-		// 1pix‚¸‚Â“h‚é‚µ‚©
-		// assert(y_force == (int)p0.y);	// Œë·’~Ï‚È‚Ç‚Å y ‚ª‚¸‚ê‚é–‚ª‚ ‚é‚©H@¨@—Ç‚­‚ ‚é‚İ‚½‚¢
+		// 1pixï¿½ï¿½ï¿½Â“hï¿½é‚µï¿½ï¿½
+		// assert(y_force == (int)p0.y);	// ï¿½ë·ï¿½~ï¿½Ï‚È‚Ç‚ï¿½ y ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é–ï¿½ï¿½ï¿½ï¿½ï¿½é‚©ï¿½Hï¿½@ï¿½ï¿½ï¿½@ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½ï¿½İ‚ï¿½ï¿½ï¿½
 		painter->point_with_z(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), 1.0f / ortho_pos.z);	
-		//   todo? Šm”FAz“§‹[“xi‚Â‚Ü‚èA‹t”‚ğæ(‚Á‚ÄAfar-near‚Å³‹K‰»‚Ì‹t‚ğ‚·j‚é‚ÆÀÛ‚Ì’lj
+		//   todo? ï¿½mï¿½Fï¿½Azï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½xï¿½iï¿½Â‚Ü‚ï¿½Aï¿½tï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ÄAfar-nearï¿½Åï¿½ï¿½Kï¿½ï¿½ï¿½Ì‹tï¿½ï¿½ï¿½ï¿½ï¿½jï¿½ï¿½Æï¿½ï¿½Û‚Ì’lï¿½j
 	}
 }
 
@@ -493,18 +501,20 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill(const jhl_xyz& p0, con
 void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 	const jhl_xyz& p0, const jhl_xyz& p1, int y_force, jhl_xyz& tex0, jhl_xyz& tex1)
 {
-	//	toria: p0.x < p1.x ‚Å—ˆ‚é
+	//	toria: p0.x < p1.x ã§æ¥ã‚‹
 
 	jhl_xyz ortho_pos;
 	jhl_xy  tex_pos;
+#ifndef USE_GDIPLUS
 	cv::Vec3b *src;
 	cv::Vec3b *c;
+#endif
 
 	float x_all = p1.x - p0.x;
 
 	if (x_all < 1)
 	{
-		// todo 1pix‚¾‚¯“h‚éH
+		// todo 1pixã ã‘å¡—ã‚‹ï¼Ÿ
 		return;
 	}
 
@@ -513,11 +523,11 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 	{
 		wari = (float)x / x_all;
 		ortho_pos.z = 1.0f / ((1.0f - wari) / p0.z + wari / p1.z);
-//		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z; // –¢g—p
-//		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// –¢g—p
+//		ortho_pos.x = ((p0.x / p0.z) * (1.0f - wari) + (p1.x / p1.z) * wari) * ortho_pos.z; // æœªä½¿ç”¨
+//		ortho_pos.y = ((p0.y / p0.z) * (1.0f - wari) + (p1.y / p1.z) * wari) * ortho_pos.z;	// æœªä½¿ç”¨
 
-		// z check (1pix‚¸‚Â)
-		if (painter->point_z_test(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / ortho_pos.z))
+		// z check (1pixå˜ä½)
+		if (painter->point_z_test(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), 1.0f / ortho_pos.z))
 		{
 			tex_pos.x = ((tex0.x / p0.z) * (1.0f - wari) + (tex1.x / p1.z) * wari) * ortho_pos.z;
 			tex_pos.y = ((tex0.y / p0.z) * (1.0f - wari) + (tex1.y / p1.z) * wari) * ortho_pos.z;
@@ -525,29 +535,53 @@ void jhl3Dlib::interpolate_line_to_non_persed_with_z_fill_tex(
 			assert(0 <= tex_pos.x || tex_pos.x < 256);
 			assert(0 <= tex_pos.y || tex_pos.y < 256);
 
-			// ƒeƒNƒXƒ`ƒƒ1ƒhƒbƒgæ‚Á‚Ä‚­‚é
-			src = tgtTex->ptr<cv::Vec3b>(tex_pos.y);	// ys–Ú‚Ìæ“ª‰æ‘f‚Ìƒ|ƒCƒ“ƒ^‚ğæ“¾
-			c = &src[(int)(tex_pos.x)];					// src[] x”Ô–Ú‚ÉƒAƒNƒZƒX
+#ifdef USE_GDIPLUS
+			// ãƒ†ã‚¯ã‚¹ãƒãƒ£1ãƒ‰ãƒƒãƒˆå¡—ã‚‹ (GDI+ ç‰ˆ)
+			{
+				Gdiplus::Color pixelColor;
+				if (tgtTex && tgtTex->GetPixel((int)tex_pos.x, (int)tex_pos.y, &pixelColor) == Gdiplus::Ok) {
+					gdi_color3b texColor;
+					texColor.r = pixelColor.GetR();
+					texColor.g = pixelColor.GetG();
+					texColor.b = pixelColor.GetB();
+					if (is_not_transparent(&texColor)) {
+						painter->point_z_set(jhl_xy_i((int)(p0.x + x), y_force), 1.0f / ortho_pos.z);
+						painter->point(jhl_xy_i((int)(p0.x + x), y_force), &texColor);
+					}
+				}
+			}
+#else
+			// ãƒ†ã‚¯ã‚¹ãƒãƒ£1ãƒ‰ãƒƒãƒˆå¡—ã£ã¦ã‹ã‚‰
+			src = tgtTex->ptr<cv::Vec3b>((int)tex_pos.y);	// yè¡Œç›®ã®å…ˆé ­ç”»ç´ ã®ãƒã‚¤ãƒ³ã‚¿ã‚’å–å¾—
+			c = &src[(int)(tex_pos.x)];					// src[] xç•ªç›®ã«ã‚¢ã‚¯ã‚»ã‚¹
 			if (is_not_transparent(c))
 			{
-				painter->point_z_set(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), 1.0f / ortho_pos.z);
-				painter->point(jhl_xy_i(p0.x + x, /*p0.y*/ y_force), c);
+				painter->point_z_set(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), 1.0f / ortho_pos.z);
+				painter->point(jhl_xy_i((int)(p0.x + x), /*p0.y*/ y_force), c);
 			}
+#endif
 		}
 	}
 }
 
 
+#ifdef USE_GDIPLUS
+bool jhl3Dlib::is_not_transparent(gdi_color3b *p)
+{
+	return true;	// todo ä»Šã¯é€æ˜éå¯¾å¿œ
+}
+#else
 bool jhl3Dlib::is_not_transparent(cv::Vec3b *p)
 {
-	return true;	// todo ¡‚Í“§–¾”ñ‘Î‰
+	return true;	// todo ä»Šã¯é€æ˜éå¯¾å¿œ
 }
+#endif
 
 #if 0
 
 
-// “§‹[“xAg‚í‚È‚¢H
-// Z‚âƒeƒNƒXƒ`ƒƒÀ•W‚ğŒvZ‚·‚é‚Ì‚Ég‚¤
+// ï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½xï¿½Aï¿½gï¿½ï¿½È‚ï¿½ï¿½H
+// Zï¿½ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½vï¿½Zï¿½ï¿½ï¿½ï¿½Ì‚Égï¿½ï¿½
 jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 {
 	//def pers_r(p, vp_far, vp_near) :
@@ -567,18 +601,18 @@ jhl_xyz jhl3Dlib::_toushi_shindo(points, vp_far, vp_near)
 
 int jhl3Dlib::draw(const object& mdl)
 {
-	int rv = 0;	//	“K“–
-	jhl_xyz		t_vert_disp[3];		// ƒfƒBƒXƒvƒŒƒCÀ•W‚Ö•ÏŠ·Œã‚ÌÀ•Wi‚½‚¾‚µA‚Ü‚¾float,z(z‚Í³‹K‰»ó‘Ô)‚à‚Á‚Ä‚éjTemp(Vertex)_Display_space
+	int rv = 0;	//	ï¿½Kï¿½ï¿½
+	jhl_xyz		t_vert_disp[3];		// ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Wï¿½Ö•ÏŠï¿½ï¿½ï¿½Ìï¿½ï¿½Wï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Ü‚ï¿½float,z(zï¿½Íï¿½ï¿½Kï¿½ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½jTemp(Vertex)_Display_space
 	pol_def*	t_poldef;
 	pol_group*	tgt_grp;
 
-	int	y_sort[3] = { 0,1,2 };		// todo ‚Ç‚¤‚É‚©‚È‚ç‚ñ‚©
+	int	y_sort[3] = { 0,1,2 };		// todo ï¿½Ç‚ï¿½ï¿½É‚ï¿½ï¿½È‚ï¿½ï¿½
 
-	// ŠÔŒv‘ª
+	// ï¿½ï¿½ï¿½ÔŒvï¿½ï¿½
 	LARGE_INTEGER freq;
-	if (!QueryPerformanceFrequency(&freq))      // ’PˆÊK“¾
+	if (!QueryPerformanceFrequency(&freq))      // ï¿½Pï¿½ÊKï¿½ï¿½
 	{
-		std::cout << "ŠÔŒv‘ªƒ^ƒCƒ}‰Šú‰»¸”s" << std::endl;
+		std::cout << "ï¿½ï¿½ï¿½ÔŒvï¿½ï¿½ï¿½^ï¿½Cï¿½}ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½s" << std::endl;
 		return -100;
 	}
 	LARGE_INTEGER start, end;
@@ -595,16 +629,16 @@ int jhl3Dlib::draw(const object& mdl)
 	{
 		tgt_grp = &(tgtMdl->group[grp]);
 
-		// todo Fİ’è ‚±‚ñ‚ÈŠ‚Å
+		// todo ï¿½Fï¿½İ’ï¿½ ï¿½ï¿½ï¿½ï¿½Èï¿½ï¿½ï¿½
 		if (mdl.attrib_override)
 		{
-			painter->set_lineColor(mdl.force_color);	// ƒV[ƒ“‚Ìƒ‚ƒfƒ‹İ’è‚Éİ’è‚µ‚Ä‚ ‚é‘®«
+			painter->set_lineColor(mdl.force_color);	// ï¿½Vï¿½[ï¿½ï¿½ï¿½Ìƒï¿½ï¿½fï¿½ï¿½ï¿½İ’ï¿½Éİ’è‚µï¿½Ä‚ï¿½ï¿½é‘®ï¿½ï¿½
 			painter->set_fillColor(mdl.force_color);
 		}
 		else
 		{
-			painter->set_lineColor(tgt_grp->color);	// “Ç‚İ‚ñ‚¾ƒ‚ƒfƒ‹’è‹`‚É’è‹`‚³‚ê‚½F
-			painter->set_fillColor(tgt_grp->color);	// todo ‚¿‚á‚ñ‚ÆÀ‘•
+			painter->set_lineColor(tgt_grp->color);	// ï¿½Ç‚İï¿½ï¿½ñ‚¾ƒï¿½ï¿½fï¿½ï¿½ï¿½ï¿½`ï¿½É’ï¿½`ï¿½ï¿½ï¿½ê‚½ï¿½F
+			painter->set_fillColor(tgt_grp->color);	// todo ï¿½ï¿½ï¿½ï¿½ï¿½Æï¿½ï¿½ï¿½
 		}
 
 
@@ -614,13 +648,13 @@ int jhl3Dlib::draw(const object& mdl)
 			for (int i = 0; i < tgtMdl->n_vert; i++)
 			{
 				jhl_xy_i _p = transToDisp(i);
-				painter->point(_p);	// ’¸“_”Ô†‚Å‚æ‚¢
+				painter->point(_p);	// ï¿½ï¿½ï¿½_ï¿½Ôï¿½ï¿½Å‚æ‚¢
 	//			std::cout << tgtMdl->vert[i] << " -> " << t_vert[0];
 			}
 			break;
 
-		case drawType_line:				// ƒƒCƒ„ƒtƒŒ[ƒ€i— –ÊÁ‹‚È‚µ)
-		case drawType_line_front_face:	// ƒƒCƒ„ƒtƒŒ[ƒ€i— –ÊÁ‹‚ ‚è)
+		case drawType_line:				// ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½tï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½Êï¿½ï¿½ï¿½ï¿½È‚ï¿½)
+		case drawType_line_front_face:	// ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½tï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½Êï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 			for (int i = 0; i < tgtMdl->n_pol; i++)
 			{
 				t_poldef = &tgtMdl->poldef[i];
@@ -629,11 +663,11 @@ int jhl3Dlib::draw(const object& mdl)
 				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
 				t_vert_disp[2] = transToDisp((*t_poldef)[2]);
 
-				if (draw_type == drawType_line_front_face)	// ‰B–ÊÁ‹—LŒø–³Œø•ªŠò‚Í‚±‚±
+				if (draw_type == drawType_line_front_face)	// ï¿½Bï¿½Êï¿½ï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í‚ï¿½ï¿½ï¿½
 				{
 					if (check_side(t_vert_disp) < 0)
 					{
-						// — –ÊBƒXƒLƒbƒv
+						// ï¿½ï¿½ï¿½ÊBï¿½Xï¿½Lï¿½bï¿½v
 						continue;
 					}
 				}
@@ -641,19 +675,19 @@ int jhl3Dlib::draw(const object& mdl)
 			}
 			break;
 
-		case drawType_flat:				// ’PFƒ|ƒŠƒSƒ“iŒõŒ¹–³‹AˆÃ–Ù‚É— –ÊœŠOjg‚¢“¹‚ ‚é‚ñ‚©
-		case drawType_flat_lighting:	// ’PFƒ|ƒŠƒSƒ“iŒõŒ¹‚ ‚èAˆÃ–Ù‚É— –ÊœŠOj
+		case drawType_flat:				// ï¿½Pï¿½Fï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Ã–Ù‚É—ï¿½ï¿½Êï¿½ï¿½Oï¿½jï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		case drawType_flat_lighting:	// ï¿½Pï¿½Fï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Ã–Ù‚É—ï¿½ï¿½Êï¿½ï¿½Oï¿½j
 		{
 
 			for (int i = 0; i < tgt_grp->n_member; i++)
 			{
 				t_poldef = &tgtMdl->poldef[tgt_grp->member[i]];
 
-				t_vert_disp[0] = transToDisp((*t_poldef)[0]);	// todo ‚‘¬‰»F@— –ÊƒXƒLƒbƒv‚ğæ‚É‚Å‚«‚é
+				t_vert_disp[0] = transToDisp((*t_poldef)[0]);	// todo ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Fï¿½@ï¿½ï¿½ï¿½ÊƒXï¿½Lï¿½bï¿½vï¿½ï¿½ï¿½É‚Å‚ï¿½ï¿½ï¿½
 				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
 				t_vert_disp[2] = transToDisp((*t_poldef)[2]);
 
-				// — –Ê‚È‚çƒXƒLƒbƒv
+				// ï¿½ï¿½ï¿½Ê‚È‚ï¿½Xï¿½Lï¿½bï¿½v
 				if (check_side(t_vert_disp) < 0)
 				{
 					continue;
@@ -661,13 +695,13 @@ int jhl3Dlib::draw(const object& mdl)
 
 				if (draw_type == drawType_flat_lighting)
 				{
-					// –Ê‚ÌFiƒtƒ‰ƒbƒgƒVƒF[ƒfƒBƒ“ƒOA100%—”½Ë(–Ê‚Æ‹ü‚ÌŠp“x‚ğl‚¦‚È‚¢)j
-					calc_lighting(t_poldef);	// ‚ ‚½‚Á‚Ä‚éŒõ‚ÌŒvZ‚Ì‚İB‚±‚ê‚ÉF‚ğŠ|‚¯‚é‚Ì‚¾
-					// memo ‚È‚é‚Ù‚ÇAƒVƒF[ƒ_[‚ª—~‚µ‚­‚È‚é‚ËI
+					// ï¿½Ê‚ÌFï¿½iï¿½tï¿½ï¿½ï¿½bï¿½gï¿½Vï¿½Fï¿½[ï¿½fï¿½Bï¿½ï¿½ï¿½Oï¿½A100%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½Ê‚Æï¿½ï¿½ï¿½ï¿½ÌŠpï¿½xï¿½ï¿½ï¿½lï¿½ï¿½ï¿½È‚ï¿½)ï¿½j
+					calc_lighting(t_poldef);	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ÌŒvï¿½Zï¿½Ì‚İBï¿½ï¿½ï¿½ï¿½ÉFï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
+					// memo ï¿½È‚ï¿½Ù‚ÇAï¿½Vï¿½Fï¿½[ï¿½_ï¿½[ï¿½ï¿½ï¿½~ï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½ËI
 				}
 				else
 				{
-					light_calced = 1.0f;	// ‚PŒÅ’è
+					light_calced = 1.0f;	// ï¿½Pï¿½Å’ï¿½
 				}
 
 				if (mdl.attrib_override)
@@ -679,11 +713,11 @@ int jhl3Dlib::draw(const object& mdl)
 					painter->set_fillColor(tgtMdl->group[grp].color * light_calced);
 				}
 
-				// ‰æ–ÊãAã‚©‚ç‰º‚ÉA¶‚©‚ç‰E‚É“h‚Á‚Ä‚¢‚«‚½‚¢
-				sort_y(t_vert_disp, y_sort);	// arg0:‘ÎÛ‚Ìƒ|ƒŠƒSƒ“ arg1:ƒ\[ƒgŒ‹‰Êi‡”Ôj
+				// ï¿½ï¿½Êï¿½Aï¿½ã‚©ï¿½ç‰ºï¿½ÉAï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½É“hï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				sort_y(t_vert_disp, y_sort);	// arg0:ï¿½ÎÛ‚Ìƒ|ï¿½ï¿½ï¿½Sï¿½ï¿½ arg1:ï¿½\ï¿½[ï¿½gï¿½ï¿½ï¿½Êiï¿½ï¿½ï¿½Ôj
 
-				// 2) yÅ¬ ‚©‚ç2‚Â‚É“_‚Öˆø‚­’¼ü‚Ì®...@line()“à‚ÅÀ‘•‚³‚ê‚Ä‚é‚ñ‚¾‚ë‚¤‚¯‚Ç
-				//    y‚Ì‰æ–Êã‚Ì•û‚©‚ç‘–¸
+				// 2) yï¿½Åï¿½ ï¿½ï¿½ï¿½ï¿½2ï¿½Â‚É“_ï¿½Öˆï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìï¿½...ï¿½@line()ï¿½ï¿½ï¿½Åï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ñ‚¾‚ë‚¤ï¿½ï¿½ï¿½ï¿½
+				//    yï¿½Ì‰ï¿½Êï¿½Ì•ï¿½ï¿½ï¿½ï¿½ç‘–ï¿½ï¿½
 				{
 					//				std::cout << "sorted vetrexes" << std::endl;
 					//				std::cout << t_vert_disp[y_sort[0]] << " - " << t_vert_disp[y_sort[1]] << " , " << t_vert_disp[y_sort[2]] << std::endl;
@@ -696,7 +730,7 @@ int jhl3Dlib::draw(const object& mdl)
 					float temp_x02 = rds[0].x;
 					float temp_x12 = rds[1].x;
 
-					// todo Å‰‚Ìƒ‰ƒCƒ“‚ªŒ‡‚¯‚é‚©‚à
+					// todo ï¿½Åï¿½ï¿½Ìƒï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é‚©ï¿½ï¿½
 
 					for (int y = (int)rds[0].y; y < (int)rds[1].y; y++)
 					{
@@ -707,7 +741,7 @@ int jhl3Dlib::draw(const object& mdl)
 						temp_x02 += delta_x02;
 					}
 
-					for (int y = rds[1].y; y < rds[2].y - 1; y++)
+					for (int y = (int)rds[1].y; y < (int)rds[2].y - 1; y++)
 					{
 						//					std::cout << "y10: " << y << ", x : " << temp_x01 << " - " << temp_x12 << std::endl;
 						painter->line_h(y, temp_x12, temp_x02);
@@ -716,28 +750,32 @@ int jhl3Dlib::draw(const object& mdl)
 						temp_x02 += delta_x02;
 					}
 
-					// todo ÅŒã‚Ìƒ‰ƒCƒ“‚ªŒ‡‚¯‚Ä‚é(ã‚Åƒ‹[ƒv‚ÌÅŒã‚ª -1 B ‚Í‚İo‚µ–h~‚ÌˆÀˆÕ‚Èô)
+					// todo ï¿½ÅŒï¿½Ìƒï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½(ï¿½ï¿½Åƒï¿½ï¿½[ï¿½vï¿½ÌÅŒã‚ª -1 ï¿½B ï¿½Í‚İoï¿½ï¿½ï¿½hï¿½~ï¿½Ìˆï¿½ï¿½Õ‚Èï¿½)
 				}
 			}
 		}
 		break;
 
-		case drawType_flat_z:			// ’PFƒ|ƒŠƒSƒ“AZŒvZ‚ ‚èitodo Z”äŠrjiŒõŒ¹‚ ‚èAˆÃ–Ù‚É— –ÊœŠOj;
-		case drawType_tex:				// ƒeƒNƒXƒ`ƒƒ—L‚è;
+		case drawType_flat_z:			// ï¿½Pï¿½Fï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½AZï¿½vï¿½Zï¿½ï¿½ï¿½ï¿½itodo Zï¿½ï¿½rï¿½jï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Ã–Ù‚É—ï¿½ï¿½Êï¿½ï¿½Oï¿½j;
+		case drawType_tex:				// ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½Lï¿½ï¿½;
 		{
-			jhl_xyz*	rds[3];					//(vec)R_Temp_Sorted todo:‚Ù‚Ú\‘¢‘Ì‚Æ‚µ‚Äg‚Á‚Ä‚éB\‘¢‘Ì‚É·‚µ‘Ö‚¦‚½‚¢
-			unsigned int* texdef_sorted[3];		// ˆê“I‚È‚à‚Ì‚É‚È‚é‚©‚à
+			jhl_xyz*	rds[3];					//(vec)R_Temp_Sorted todo:ï¿½Ù‚Ú\ï¿½ï¿½ï¿½Ì‚Æ‚ï¿½ï¿½Ägï¿½ï¿½ï¿½Ä‚ï¿½Bï¿½\ï¿½ï¿½ï¿½Ì‚Éï¿½ï¿½ï¿½ï¿½Ö‚ï¿½ï¿½ï¿½ï¿½ï¿½
+			unsigned int* texdef_sorted[3];		// ï¿½êï¿½Iï¿½È‚ï¿½ï¿½Ì‚É‚È‚é‚©ï¿½ï¿½
 			texUv*		texuv_sorted[3];
 
-			attrib_tex	*t;					// attrib_flat ‚Ì‚±‚Æ‚à‚ ‚é‚¾‚ë‚¤‚¯‚ÇAƒAƒNƒZƒX‚µ‚È‚¯‚ê‚Î‚¢‚¢
-			texUv		*t_uv;
+			attrib_tex	*t = nullptr;		// attrib_flat ï¿½Ì‚ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½é‚¾ï¿½ë‚¤ï¿½ï¿½ï¿½ÇAï¿½Aï¿½Nï¿½Zï¿½Xï¿½ï¿½ï¿½È‚ï¿½ï¿½ï¿½Î‚ï¿½ï¿½ï¿½
+			texUv		*t_uv = nullptr;
 
-			bool tex_en = tgt_grp->attr_type == attr_tex;	// ŒãX•Ï”–¼‚ª—Ç‚­‚È‚¢‚©‚à
+			bool tex_en = tgt_grp->attr_type == attr_tex;	// å¤‰æ•°åŒ–ã—ãŸã»ã†ãŒã„ã„ã‹ã‚‚
 			if (tex_en)
 			{
 				t = (attrib_tex*)tgt_grp->attrib;
 				t_uv = t->uv;
-				tgtTex = &(t->Tex);
+#ifdef USE_GDIPLUS
+				tgtTex = t->Tex;	// GDI+: ãƒã‚¤ãƒ³ã‚¿ãã®ã‚‚ã®
+#else
+				tgtTex = &(t->Tex);	// OpenCV: cv::Matã¸ã®å‚ç…§
+#endif
 			}
 
 			for (int i = 0; i < tgt_grp->n_member; i++)
@@ -748,18 +786,18 @@ int jhl3Dlib::draw(const object& mdl)
 				t_vert_disp[1] = transToDisp((*t_poldef)[1]);
 				t_vert_disp[2] = transToDisp((*t_poldef)[2]);
 
-				// — –Ê‚È‚çƒXƒLƒbƒv
+				// ï¿½ï¿½ï¿½Ê‚È‚ï¿½Xï¿½Lï¿½bï¿½v
 				if (check_side(t_vert_disp) < 0)
 				{
 					continue;
 				}
 
-				// todo ‹ŠEŠO‚Ìœ‹
+				// todo ï¿½ï¿½ï¿½Eï¿½Oï¿½Ìï¿½ï¿½ï¿½
 
-				// ‚ ‚½‚Á‚Ä‚éŒõ‚ÌF‚ÌŒvZiƒtƒ‰ƒbƒgƒVƒF[ƒfƒBƒ“ƒOA100%—”½Ë(–Ê‚Æ‹ü‚ÌŠp“x‚ğl‚¦‚È‚¢)j
-				calc_lighting(t_poldef);	// ‚±‚ê‚ÉF‚ğŠ|‚¯‚é‚Ì‚¾
+				// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ÌFï¿½ÌŒvï¿½Zï¿½iï¿½tï¿½ï¿½ï¿½bï¿½gï¿½Vï¿½Fï¿½[ï¿½fï¿½Bï¿½ï¿½ï¿½Oï¿½A100%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½Ê‚Æï¿½ï¿½ï¿½ï¿½ÌŠpï¿½xï¿½ï¿½ï¿½lï¿½ï¿½ï¿½È‚ï¿½)ï¿½j
+				calc_lighting(t_poldef);	// ï¿½ï¿½ï¿½ï¿½ÉFï¿½ï¿½ï¿½|ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
 
-				// Fİ’è toria
+				// ï¿½Fï¿½İ’ï¿½ toria
 				if (mdl.attrib_override)
 				{
 					painter->set_fillColor(mdl.force_color * light_calced);
@@ -769,26 +807,26 @@ int jhl3Dlib::draw(const object& mdl)
 					painter->set_fillColor(tgt_grp->color * light_calced);
 				}
 
-				// debug z map Œ©‚â‚·‚­‚·‚é‚½‚ß‚¾‚¯‚Ì‚à‚Ì
-				min_max_update(t_vert_disp[0].z);			// ”š‚ª‘å‚«‚¢•û‚ªè‘O
+				// debug z map ï¿½ï¿½ï¿½â‚·ï¿½ï¿½ï¿½ï¿½ï¿½é‚½ï¿½ß‚ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½ï¿½
+				min_max_update(t_vert_disp[0].z);			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½å‚«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½O
 				min_max_update(t_vert_disp[1].z);
 				min_max_update(t_vert_disp[2].z);
 
-				// ƒ|ƒŠƒSƒ“’¸“_Ay‚Ì¬‚³‚¢•û‚©‚çƒ\[ƒg
-				// y‚Ìã‚Ì•û‚©‚ç•`‚­iŸ‚ÉA¶‚©‚ç‰E‚Ö“h‚éj
-				sort_y(t_vert_disp, y_sort);	// t_vert_disp:‘ÎÛ‚Ìƒ|ƒŠƒSƒ“	y_sort:’¸“_ƒ\[ƒgŒ‹‰Êi‡”Ôj
+				// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ï¿½ï¿½_ï¿½Ayï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\ï¿½[ï¿½g
+				// yï¿½Ìï¿½Ì•ï¿½ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½ÉAï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½Ö“hï¿½ï¿½j
+				sort_y(t_vert_disp, y_sort);	// t_vert_disp:ï¿½ÎÛ‚Ìƒ|ï¿½ï¿½ï¿½Sï¿½ï¿½	y_sort:ï¿½ï¿½ï¿½_ï¿½\ï¿½[ï¿½gï¿½ï¿½ï¿½Êiï¿½ï¿½ï¿½Ôj
 				rds[0] = &(t_vert_disp[y_sort[0]]);
 				rds[1] = &(t_vert_disp[y_sort[1]]);
 				rds[2] = &(t_vert_disp[y_sort[2]]);
 
-				if (!tex_en || (draw_type == drawType_flat_z))	// todo ‚à‚Á‚ÆƒeƒNƒXƒ`ƒƒiãŒÀ‚QHj
+				if (!tex_en || (draw_type == drawType_flat_z))	// todo ï¿½ï¿½ï¿½ï¿½ï¿½Æƒeï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½ï¿½Qï¿½Hï¿½j
 				{
-					// ÀÛ‚Ì•`‰æ
+					// ï¿½ï¿½ï¿½Û‚Ì•`ï¿½ï¿½
 					draw_a_polygon_flat(rds, texuv_sorted);
 				}
 				else
 				{
-					texdef_sorted[0] = &(t->poldef[i][y_sort[0]]);	// todo ‚Ğ‚Ç‚¢
+					texdef_sorted[0] = &(t->poldef[i][y_sort[0]]);	// todo ï¿½Ğ‚Ç‚ï¿½
 					texdef_sorted[1] = &(t->poldef[i][y_sort[1]]);
 					texdef_sorted[2] = &(t->poldef[i][y_sort[2]]);
 
@@ -796,7 +834,7 @@ int jhl3Dlib::draw(const object& mdl)
 					texuv_sorted[1] = &t_uv[*texdef_sorted[1]];
 					texuv_sorted[2] = &t_uv[*texdef_sorted[2]];
 
-					// ÀÛ‚Ì•`‰æ
+					// ï¿½ï¿½ï¿½Û‚Ì•`ï¿½ï¿½
 					draw_a_polygon_tex(rds, texuv_sorted);
 				}
 
@@ -806,11 +844,11 @@ int jhl3Dlib::draw(const object& mdl)
 		break;
 
 #if 0
-		case drawType_phong:				// ƒtƒHƒ“ƒVƒF[ƒfƒBƒ“ƒO
-			Še’¸“_‚Ì–@ü ß ‚»‚Ì’¸“_‚ğ‹¤—L‚·‚é‘Sƒ|ƒŠƒSƒ“‚Ì–@ü‚Ì•½‹Ï
-				ƒ‚ƒfƒ‹“Ç‚İ‚İA‚Ü‚½‚ÍƒAƒjƒ[ƒVƒ‡ƒ“‚É‚ ‚ç‚©‚¶‚ßŒvZ‚µ‚Ä‚¨‚­‚×‚«‚¾‚ë‚¤
-				hw‚Å‚Í‚Ç‚¤‚µ‚Ä‚é‚ñ‚¾‚ë‚¤H
-				ƒOƒ‹[ƒv‚²‚Æ‚Én‚ÌŒvZ‚ğ‚·‚é(ƒ[ƒJƒ‹À•W‚Åj
+		case drawType_phong:				// ï¿½tï¿½Hï¿½ï¿½ï¿½Vï¿½Fï¿½[ï¿½fï¿½Bï¿½ï¿½ï¿½O
+			ï¿½eï¿½ï¿½ï¿½_ï¿½Ì–@ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ì’ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½ï¿½Sï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ì–@ï¿½ï¿½ï¿½Ì•ï¿½ï¿½ï¿½
+				ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½Ç‚İï¿½ï¿½İï¿½ï¿½Aï¿½Ü‚ï¿½ï¿½ÍƒAï¿½jï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‚ï¿½ï¿½ç‚©ï¿½ï¿½ï¿½ßŒvï¿½Zï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½×‚ï¿½ï¿½ï¿½ï¿½ë‚¤
+				hwï¿½Å‚Í‚Ç‚ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ñ‚¾‚ë‚¤ï¿½H
+				ï¿½Oï¿½ï¿½ï¿½[ï¿½vï¿½ï¿½ï¿½Æ‚ï¿½nï¿½ÌŒvï¿½Zï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½Åj
 #endif
 		default:
 			break;
@@ -832,14 +870,14 @@ int jhl3Dlib::draw(const object& mdl)
 
 int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 {
-	float delta_x01 = grad(*rds[0], *rds[1]);	// OŠpŒ`‚ğ‘‚­‚É‚ ‚½‚èA’¼ü‚ÌŒX‚«
+	float delta_x01 = grad(*rds[0], *rds[1]);	// ï¿½Oï¿½pï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‚ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½ÌŒXï¿½ï¿½
 	float delta_x02 = grad(*rds[0], *rds[2]);
 	float delta_x12 = grad(*rds[1], *rds[2]);
-//	float temp_x01 = rds[0]->x;				// y‚ª¬‚³‚¢’¸“_
-//	float temp_x02 = rds[0]->x;				// @@2”Ô–Ú‚Ì
-//	float temp_x12 = rds[1]->x;				// …•½‚É“h‚Á‚Ä‚¢‚­‚Ì‚ÅAy‚ª2”Ô–Ú‚Ì’¸“_‚©‚ç‚ÍA2-3”Ô–Ú‚Ì’¸“_‚ğŒ‹‚Ô
+//	float temp_x01 = rds[0]->x;				// yï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½_
+//	float temp_x02 = rds[0]->x;				// ï¿½@ï¿½@2ï¿½Ô–Ú‚ï¿½
+//	float temp_x12 = rds[1]->x;				// ï¿½ï¿½ï¿½ï¿½ï¿½É“hï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½Ì‚ÅAyï¿½ï¿½2ï¿½Ô–Ú‚Ì’ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½ÍA2-3ï¿½Ô–Ú‚Ì’ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-											// todo Å‰‚Ìƒ‰ƒCƒ“‚ªŒ‡‚¯‚é‚©‚à
+											// todo ï¿½Åï¿½ï¿½Ìƒï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é‚©ï¿½ï¿½
 	jhl_xyz	scan_y[2];
 
 	int	y_all01 = (int)(rds[1]->y - rds[0]->y);
@@ -852,9 +890,9 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 	for (int y = (int)rds[0]->y; y < (int)rds[1]->y; y++)
 	{
 		// z
-		// ¢‚Ì‚™‚Ì¬‚³‚¢•û‚©‚ç…•½‚É“h‚Á‚Ä‚ä‚­
-		// interpolate_line_to_non_persed : ³‹K‰»‹‘äŒ`’†iƒp[ƒX‚ğE‚µ‚½ó‘Ô‚Åj‚Å‚ÌÀ•W
-		// ‚»‚±‚ÅA•Ó‚Ì‚Ç‚Ì•ÓiŠ„‡j‚©
+		// ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ç…ï¿½ï¿½ï¿½É“hï¿½ï¿½ï¿½Ä‚ä‚­
+		// interpolate_line_to_non_persed : ï¿½ï¿½ï¿½Kï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½iï¿½pï¿½[ï¿½Xï¿½ï¿½ï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô‚Åjï¿½Å‚Ìï¿½ï¿½W
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ÅAï¿½Ó‚Ì‚Ç‚Ì•Óiï¿½ï¿½ï¿½ï¿½ï¿½jï¿½ï¿½
 		scan_y[0] = interpolate_line_to_non_persed((y - y_start0), y_all01,	*rds[0], *rds[1]);
 		scan_y[1] = interpolate_line_to_non_persed((y - y_start0), y_all02,	*rds[0], *rds[2]);
 		if (scan_y[0].x <= scan_y[1].x)
@@ -867,13 +905,13 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 		}
 
 
-		// F@ƒtƒ‰ƒbƒg‚È‚Ì‚Åˆê‹C‚É“h‚é
+		// ï¿½Fï¿½@ï¿½tï¿½ï¿½ï¿½bï¿½gï¿½È‚Ì‚Åˆï¿½Cï¿½É“hï¿½ï¿½
 	//	painter->line_h(y, temp_x01, temp_x02);
-	//	temp_x01 += delta_x01;	// Ÿ‚Ìƒ‰ƒCƒ“
+	//	temp_x01 += delta_x01;	// ï¿½ï¿½ï¿½Ìƒï¿½ï¿½Cï¿½ï¿½
 		//temp_x02 += delta_x02;
 	}
 
-	for (int y = rds[1]->y; y < rds[2]->y - 1; y++)
+	for (int y = (int)rds[1]->y; y < (int)rds[2]->y - 1; y++)
 	{
 		// z & color
 		scan_y[0] = interpolate_line_to_non_persed((y - y_start1), y_all12,	*rds[1], *rds[2]);
@@ -887,14 +925,14 @@ int jhl3Dlib::draw_a_polygon_flat(jhl_xyz** rds, texUv** texUv )
 			interpolate_line_to_non_persed_with_z_fill(scan_y[1], scan_y[0], y);
 		}
 	}
-	// todo ÅŒã‚Ìƒ‰ƒCƒ“‚ªŒ‡‚¯‚Ä‚é(ã‚Åƒ‹[ƒv‚ÌÅŒã‚ª -1 B ‚Í‚İo‚µ–h~‚ÌˆÀˆÕ‚Èô)
-	return 0;	// ‚Æ‚è‚ ‚¦‚¸
+	// todo ï¿½ÅŒï¿½Ìƒï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½(ï¿½ï¿½Åƒï¿½ï¿½[ï¿½vï¿½ÌÅŒã‚ª -1 ï¿½B ï¿½Í‚İoï¿½ï¿½ï¿½hï¿½~ï¿½Ìˆï¿½ï¿½Õ‚Èï¿½)
+	return 0;	// ï¿½Æ‚è‚ ï¿½ï¿½ï¿½ï¿½
 }
 
 int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 {
 	jhl_xyz	scan_y[2];
-	// ƒtƒFƒbƒ`‚·‚éƒeƒNƒXƒ`ƒƒ‚ÌƒsƒNƒZƒ‹À•WŒvZ
+	// ï¿½tï¿½Fï¿½bï¿½`ï¿½ï¿½ï¿½ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½Ìƒsï¿½Nï¿½Zï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½vï¿½Z
 	jhl_xyz	scan_y_tex[2];
 	jhl_xyz rds_tex[3];
 
@@ -913,14 +951,14 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 
 	for (int y = (int)rds[0]->y; y < (int)rds[1]->y; y++)
 	{
-		// ¢‚Ì‚™‚Ì¬‚³‚¢•û‚©‚ç…•½‚É“h‚Á‚Ä‚ä‚­
-		// interpolate_line_to_non_persed : ³‹K‰»‹‘äŒ`’†iƒp[ƒX‚ğE‚µ‚½ó‘Ô‚Åj‚Å‚ÌÀ•W
-		// ‚»‚±‚ÅA•Ó‚Ì‚Ç‚Ì•ÓiŠ„‡j‚©
-		// scan_y[], scan_y_tex[] ŒvZ
+		// ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ç…ï¿½ï¿½ï¿½É“hï¿½ï¿½ï¿½Ä‚ä‚­
+		// interpolate_line_to_non_persed : ï¿½ï¿½ï¿½Kï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½iï¿½pï¿½[ï¿½Xï¿½ï¿½ï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô‚Åjï¿½Å‚Ìï¿½ï¿½W
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ÅAï¿½Ó‚Ì‚Ç‚Ì•Óiï¿½ï¿½ï¿½ï¿½ï¿½jï¿½ï¿½
+		// scan_y[], scan_y_tex[] ï¿½vï¿½Z
 		interpolate_line_to_non_persed_tex((y - y_start0), y_all01,	*rds[0], *rds[1], rds_tex[0], rds_tex[1], scan_y[0], scan_y_tex[0] );
 		interpolate_line_to_non_persed_tex((y - y_start0), y_all02,	*rds[0], *rds[2], rds_tex[0], rds_tex[2], scan_y[1], scan_y_tex[1] );
 
-		if (scan_y[0].x <= scan_y[1].x)	// todo ‘å¬ŠÖŒW‚Í‚»‚Ìƒ|ƒŠƒSƒ“‚ğ‚â‚Á‚Ä‚éŠÔ‚Í•Ï‚í‚ç‚È‚¢‚Í‚¸
+		if (scan_y[0].x <= scan_y[1].x)	// todo ï¿½å¬ï¿½ÖŒWï¿½Í‚ï¿½ï¿½Ìƒ|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½Ô‚Í•Ï‚ï¿½ï¿½È‚ï¿½ï¿½Í‚ï¿½
 		{
 			interpolate_line_to_non_persed_with_z_fill_tex(scan_y[0], scan_y[1], y, scan_y_tex[0], scan_y_tex[1]);
 		}
@@ -930,8 +968,8 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 		}
 	}
 
-	// ‰º”¼•ªiHj
-	for (int y = rds[1]->y; y < rds[2]->y - 1; y++)
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½iï¿½Hï¿½j
+	for (int y = (int)rds[1]->y; y < (int)rds[2]->y - 1; y++)
 	{
 		interpolate_line_to_non_persed_tex((y - y_start1), y_all12,	*rds[1], *rds[2], rds_tex[1], rds_tex[2], scan_y[0], scan_y_tex[0]);
 		interpolate_line_to_non_persed_tex((y - y_start0), y_all02,	*rds[0], *rds[2], rds_tex[0], rds_tex[2], scan_y[1], scan_y_tex[1]);
@@ -945,8 +983,8 @@ int jhl3Dlib::draw_a_polygon_tex(jhl_xyz** rds, texUv** texUv )
 			interpolate_line_to_non_persed_with_z_fill_tex(scan_y[1], scan_y[0], y, scan_y_tex[1], scan_y_tex[0]);
 		}
 	}
-	// todo ÅŒã‚Ìƒ‰ƒCƒ“‚ªŒ‡‚¯‚Ä‚é(ã‚Åƒ‹[ƒv‚ÌÅŒã‚ª -1 B ‚Í‚İo‚µ–h~‚ÌˆÀˆÕ‚Èô)
-	return 0;	// ‚Æ‚è‚ ‚¦‚¸
+	// todo ï¿½ÅŒï¿½Ìƒï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½(ï¿½ï¿½Åƒï¿½ï¿½[ï¿½vï¿½ÌÅŒã‚ª -1 ï¿½B ï¿½Í‚İoï¿½ï¿½ï¿½hï¿½~ï¿½Ìˆï¿½ï¿½Õ‚Èï¿½)
+	return 0;	// ï¿½Æ‚è‚ ï¿½ï¿½ï¿½ï¿½
 }
 
 
@@ -975,13 +1013,13 @@ const char* jhl3Dlib::get_draw_type_string()
 
 
 
-// ‚à‚¤ˆê–‡‚©‚Ô‚¹‚½‚¢H
-// todo À‚ÍŒvZ—Ê­‚È‚¢‹@‚ªc“Á‚ÉÅ‹ß‚ÌDSP–½—ß‚ ‚Á‚½‚ç@ƒI[ƒo[ƒwƒbƒh‚Ì‚Ù‚¤‚ª‘å‚«‚¢‚©‚àH
+// ï¿½ï¿½ï¿½ï¿½ï¿½ê–‡ï¿½ï¿½ï¿½Ô‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½H
+// todo ï¿½ï¿½ï¿½ÍŒvï¿½Zï¿½Êï¿½ï¿½È‚ï¿½ï¿½@ï¿½ï¿½ï¿½cï¿½ï¿½ï¿½ÉÅ‹ß‚ï¿½DSPï¿½ï¿½ï¿½ß‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½@ï¿½Iï¿½[ï¿½oï¿½[ï¿½wï¿½bï¿½hï¿½Ì‚Ù‚ï¿½ï¿½ï¿½ï¿½å‚«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½H
 jhl_xyz jhl3Dlib::transToDisp(int vert_idx)
 {
 	if (p_TTDcache == NULL)
 	{
-		return(transMat * tgtMdl->verts[vert_idx]);	// ƒLƒƒƒbƒVƒ…–¢‰Šú‰» / –¢g—p
+		return(transMat * tgtMdl->verts[vert_idx]);	// ï¿½Lï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ / ï¿½ï¿½ï¿½gï¿½p
 	}
 
 	if( p_TTDcache[vert_idx] == jhl_xyz(0) )
@@ -1025,11 +1063,8 @@ void jhl3Dlib::transToDisp_cache_clear()
 		return;
 	}
 
-	// ”z—ñ‚¾‚¯‚ÇAƒAƒ‰ƒCƒ“ƒƒ“ƒg‚Ì“s‡‚Åmemset‚·‚é‘O‚ÉÀÛ‚Éfill‚·‚éƒTƒCƒY‚ğZo
-	// –³‘ÊHi’†‚Å‚â‚Á‚Ä‚éHj // todo ‚à‚Á‚Æ‚¢‚¢•û–@
-	jhl_xyz* tbl2 = p_TTDcache;
-	tbl2++;
-	int stride = (int)tbl2 - (int)p_TTDcache;
+	// é…åˆ—ã ã‘ã©ã€ã‚¢ãƒ©ã‚¤ãƒ¡ãƒ³ãƒˆã®éƒ½åˆã§memsetã™ã‚‹å‰ã«å®Ÿéš›ã®fillã™ã‚‹ã‚µã‚¤ã‚ºã‚’ç®—å‡º
+	size_t stride = sizeof(jhl_xyz);
 
 	memset(p_TTDcache, 0, stride * TTDcacheSize);
 	cache_total = 0;

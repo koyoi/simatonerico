@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug 3d_test_cpp",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/3d_test_cpp/x64/Debug/3d_test_cpp.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/3d_test_cpp/x64/Debug",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build Debug x64"
+        }
+    ]
+}

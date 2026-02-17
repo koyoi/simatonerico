@@ -4,7 +4,11 @@
 
 #include "basic3dCalc.h"
 //#include "hal_graphics.h"
+#ifdef USE_GDIPLUS
+#include "hal_gfx_gdiplus.h"
+#else
 #include "hal_gfx_ocv.h"
+#endif
 
 
 //#define DISP_MAT_KAKIKUDASHI
@@ -27,7 +31,7 @@ enum En_draw_type {
 	drawType_flat_lighting,
 	drawType_flat_z,
 	drawType_tex,
-	/* «—ˆÀ‘•
+	/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		drawType_phong,
 */
 drawType_max_,
@@ -41,7 +45,7 @@ static const char *draw_type_str[] {
 	"drawType_flat_lighting",
 	"drawType_flat_z",
 	"drawType_tex",
-	/* «—ˆÀ‘•
+	/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	"drawType_phong,
 	*/
 	"drawType_max_",
@@ -66,16 +70,20 @@ struct attrib_tex
 	//	char*	texName;
 	std::string	texName;
 	//	char*	Tex;
-	cv::Mat		Tex;			// todo •¡”‚Ìƒ‚ƒfƒ‹/ƒOƒ‹[ƒv‚Åg‚¢‚Ü‚í‚µ‚½‚¢‚Ì‚ÅAƒnƒ“ƒhƒ‹‚ğ‚½‚¹‚é‚Ù‚¤‚ª‚¢‚¢‚¾‚ë‚¤
-	texUv*		uv;				// UVÀ•W
-	pol_def*	poldef;			// ƒ‚ƒfƒ‹‚Ìƒ|ƒŠƒSƒ“‚Æ“¯‚¶ƒ|ƒŠƒSƒ“”Ô†A’¸“_‡Buv‚Ì‰½”Ô‚ª‘Î‰‚·‚é‚©
-								//  ƒ|ƒŠƒSƒ“’è‹`‚Æ¬“¯’ˆÓ
+#ifdef USE_GDIPLUS
+	Gdiplus::Bitmap*	Tex;	// GDI+ ãƒ†ã‚¯ã‚¹ãƒãƒ£
+#else
+	cv::Mat		Tex;			// todo è¤‡æ•°ã®ãƒ¢ãƒ‡ãƒ«/ã‚°ãƒ«ãƒ¼ãƒ—ã§ä½¿ã„ã¾ã‚ã—ãŸã„ã®ã§ãƒãƒ³ãƒ‰ãƒ«ç®¡ç†ã—ãŸã»ã†ãŒã„ã„ã ã‚ã†
+#endif
+	texUv*		uv;				// UVåº§æ¨™
+	pol_def*	poldef;			// ãƒ¢ãƒ‡ãƒ«ã®ãƒãƒªã‚´ãƒ³ã¨åŒã˜ãƒãƒªã‚´ãƒ³ç•ªå·ã€é ‚ç‚¹æ•°ã€‚uvã®ä½•ç•ªãŒå¯¾å¿œã™ã‚‹ã‹
+								//  ãƒãƒªã‚´ãƒ³å®šç¾©ã¨åˆã‚ã›ã‚‹
 };
 
 
 struct attrib_flat
 {
-	// ‚©‚ç‚Ì\‘¢‘Ì‚Á‚Ä‚ ‚èHƒ_ƒ~[‚ª‚¢‚éH
+	// ï¿½ï¿½ï¿½ï¿½Ì\ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Hï¿½_ï¿½~ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½H
 };
 
 
@@ -90,13 +98,13 @@ typedef struct pol_group_
 {
 	group_attr_type	attr_type;
 	int		n_member;
-	int*	member;		// ƒƒ“ƒo[ƒ|ƒŠƒSƒ“
-	void*	attrib;		// attr_type‚É‚æ‚Á‚Äˆá‚¤
-						// void* ‚ªw‚·‚Ì‚ÍA
+	int*	member;		// ï¿½ï¿½ï¿½ï¿½ï¿½oï¿½[ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½
+	void*	attrib;		// attr_typeï¿½É‚ï¿½ï¿½ï¿½Äˆá‚¤
+						// void* ï¿½ï¿½ï¿½wï¿½ï¿½ï¿½Ì‚ÍA
 						//	attrib_tex*		attr_tex;
 						//	attrib_flat*	attr_flat;
-						// ‚©‚È‚Ÿ
-	jhl_rgb	color;		// ‚Æ‚è‚ ‚¦‚¸A‰½‚Å‚àƒJƒ‰[
+						// ï¿½ï¿½ï¿½È‚ï¿½
+	jhl_rgb	color;		// ï¿½Æ‚è‚ ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½Å‚ï¿½ï¿½Jï¿½ï¿½ï¿½[
 	//jhl_rgb	color;		// line color?
 }pol_group;
 
@@ -107,10 +115,10 @@ public:
 
 public:
 	std::string name;
-	int			n_vert;		// ’¸“_”
-	jhl_xyz*	verts;		//  vert ‚Í”z—ñ‚Ì‚Â‚à‚è‚È‚Ì‚¾‚ªA‚±‚ê‚Å‚¢‚¢‚ç‚µ‚¢
-	int			n_pol;		// ƒ|ƒŠƒSƒ“”
-	pol_def*	poldef;		// ƒ‚ƒfƒ‹‚ÌŒ`ó
+	int			n_vert;		// ï¿½ï¿½ï¿½_ï¿½ï¿½
+	jhl_xyz*	verts;		//  vert ï¿½Í”zï¿½ï¿½Ì‚Â‚ï¿½ï¿½ï¿½È‚Ì‚ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½Å‚ï¿½ï¿½ï¿½ï¿½ç‚µï¿½ï¿½
+	int			n_pol;		// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ï¿½
+	pol_def*	poldef;		// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½ÌŒ`ï¿½ï¿½
 	int			n_groups;
 	pol_group*	group;
 };
@@ -121,11 +129,11 @@ struct object {
 	matHomo4		model_mat;
 	modelData*		p_model;
 
-	// todo ‚à‚Á‚Æ‚¢‚¢À‘•
+	// todo ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	bool		attrib_override;
-	jhl_rgb		force_color;	// diffuse,ƒfƒoƒbƒO—p‚©H
-	// jhl_rgb		xxxx_color;	// ”­Œõ
-	// ‚È‚Ç‚È‚Ç..
+	jhl_rgb		force_color;	// diffuse,ï¿½fï¿½oï¿½bï¿½Oï¿½pï¿½ï¿½ï¿½H
+	// jhl_rgb		xxxx_color;	// ï¿½ï¿½ï¿½ï¿½
+	// ï¿½È‚Ç‚È‚ï¿½..
 };
 
 // ------------------------------------------------------------
@@ -137,7 +145,11 @@ public:
 	friend disp_base;
 	static const char*		jhl3Dlib::get_draw_type_string();
 	static En_draw_type		jhl3Dlib::get_draw_type();
+#ifdef USE_GDIPLUS
+	static Gdiplus::Bitmap*	tgtTex;
+#else
 	static cv::Mat*			tgtTex;
+#endif
 
 
 // settings
@@ -145,7 +157,7 @@ private:
 	static En_draw_type		draw_type;
 
 	static viewport_config	vp;
-	static jhl_xy_i			display;	// ƒLƒƒƒ“ƒoƒXƒTƒCƒY
+	static jhl_xy_i			display;	// ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½oï¿½Xï¿½Tï¿½Cï¿½Y
 
 public:
 	static void			setTgtObj( const object& tgt);
@@ -154,24 +166,32 @@ private:
 	static modelData*	tgtMdl;
 //	static int			setTgtMdl(modelData* t) { tgtMdl = t; };
 
+#ifdef USE_GDIPLUS
+	static disp_gdiplus*	painter;
+#else
 	static disp_ocv2*	painter;
-//	static disp_base*	painter;		// ƒAƒNƒZƒX‚Å‚«‚È‚¢Šî’êƒNƒ‰ƒX‚¤‚ñ‚½‚ç
+#endif
+//	static disp_base*	painter;		// ã‚¢ã‚¯ã‚»ã‚¹ã§ããªã„ã¨ã‚¯ãƒ©ã‚¹ãŒå«Œã‚“ã ã‚‰
 
 public:
 //	static void			set_painter(disp_base& p) { painter = &p; };
+#ifdef USE_GDIPLUS
+	static void			set_painter(disp_gdiplus& p) { painter = &p; };
+#else
 	static void			set_painter(disp_ocv2& p) { painter = &p; };
+#endif
 
 
-// •ÏŠ·s—ñŠÖŒW
+// ï¿½ÏŠï¿½ï¿½sï¿½ï¿½ÖŒW
 private:
-	static matHomo4			view_mat;	//	ƒrƒ…[•ÏŠ·(ƒ‚ƒfƒ‹•ÏŠ·‚Í tgtMdl ‚¿)
-	static matHomo4_full	proj_mat;	//	“Š‰e•ÏŠ·
+	static matHomo4			view_mat;	//	ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½(ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½ÏŠï¿½ï¿½ï¿½ tgtMdl ï¿½ï¿½ï¿½ï¿½)
+	static matHomo4_full	proj_mat;	//	ï¿½ï¿½ï¿½eï¿½ÏŠï¿½
 #ifdef DISP_MAT_KAKIKUDASHI
-	static matHomo4			disp_mat;	//	ƒfƒBƒXƒvƒŒƒC•ÏŠ·
+	static matHomo4			disp_mat;	//	ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ÏŠï¿½
 #endif
 	
-	static matHomo4			modelViewMat;	// ƒ‚ƒfƒ‹ƒrƒ…[•ÏŠ·s—ñiŒõŒ¹ŒvZ‚Ég‚¤j
-	static matHomo4_full	transMat;	// ÅI“I‚È•ÏŠ·s—ñ
+	static matHomo4			modelViewMat;	// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½rï¿½ï¿½ï¿½[ï¿½ÏŠï¿½ï¿½sï¿½ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Zï¿½Égï¿½ï¿½ï¿½j
+	static matHomo4_full	transMat;	// ï¿½ÅIï¿½Iï¿½È•ÏŠï¿½ï¿½sï¿½ï¿½
 
 public:
 	static void		set_view_mat(const jhl_xyz& eye_loc, const jhl_xyz& u_vec, const jhl_xyz& tgt_loc);
@@ -184,14 +204,18 @@ public:
 	static void		interpolate_line_to_non_persed_with_z_fill_tex(const jhl_xyz& p0, const jhl_xyz& p1, int y_force, jhl_xyz& tex0, jhl_xyz& tex1);
 
 	static float	check_side(jhl_xyz* verts);
+#ifdef USE_GDIPLUS
+	static bool		is_not_transparent(gdi_color3b *p);
+#else
 	static bool		is_not_transparent(cv::Vec3b *p);
+#endif
 
 private:
 	static void		setTransMat(const matHomo4& mdl_mat);
 	static int		draw_a_polygon_flat(jhl_xyz ** rds, texUv ** texuv_sorted);
 	static int		draw_a_polygon_tex(jhl_xyz ** rds, texUv ** texuv_sorted);
 	
-// Æ–¾
+// ï¿½Æ–ï¿½
 public:
 	static jhl_rgb*		light_ambient;
 	static dir_light*	light_directional;
@@ -213,7 +237,7 @@ public:
 #endif
 
 
-// •`‰æ
+// ï¿½`ï¿½ï¿½
 	static int draw(const object& mdl);
 
 	static En_draw_type draw_type_next();
@@ -224,7 +248,7 @@ public:
 
 private:
 	static jhl_xyz	transToDisp(int vert_idx);
-	static jhl_xyz* p_TTDcache;		// ’¸“_î•ñ‚ÌƒfƒBƒXƒvƒŒÀ•W‚Ö‚Ì•ÏŠ·Œ‹‰Ê‚ğƒLƒƒƒbƒVƒ…‚·‚é
+	static jhl_xyz* p_TTDcache;		// ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Ìƒfï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½Ö‚Ì•ÏŠï¿½ï¿½ï¿½ï¿½Ê‚ï¿½ï¿½Lï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	static int		TTDcacheSize;
 	static	char*	mdl_name;
 

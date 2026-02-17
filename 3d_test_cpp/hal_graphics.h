@@ -7,12 +7,12 @@ class disp_base
 {
 public:
 	static jhl_xy_i	window_size;
-	static float	v;				// …•½ƒ‰ƒCƒ“‚ğˆø‚­‚±‚Æ‚ª‘½‚¢‚Ì‚Å
+	static float	v;				// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
 	static int		line_width;
 
 protected:
-	static jhl_rgb	line_color;		// ƒ‰ƒCƒ“‚ğ‘±‚¯‚Ä“¯‚¶F‚ğˆø‚­‚±‚Æ‚ª‘½‚¢‚Ì‚Å
-	static jhl_rgb	fill_color;		// ƒ‰ƒCƒ“‚ğ‘±‚¯‚Ä“¯‚¶F‚ğˆø‚­‚±‚Æ‚ª‘½‚¢‚Ì‚Å
+	static jhl_rgb	line_color;		// ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ğ‘±‚ï¿½ï¿½Ä“ï¿½ï¿½ï¿½ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
+	static jhl_rgb	fill_color;		// ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½ğ‘±‚ï¿½ï¿½Ä“ï¿½ï¿½ï¿½ï¿½Fï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‚ï¿½
 
 public:
 	virtual void	disp_init(jhl_xy_i window_size) = 0;
@@ -22,15 +22,15 @@ public:
 	virtual void	set_lineColor(jhl_rgb) = 0;
 	virtual void	set_fillColor(jhl_rgb) = 0;
 
-	// ƒfƒBƒXƒvƒŒƒCÀ•W‚ğ“n‚·
-	virtual void	point(jhl_xy_i& pos, int size = 2) = 0;
+	// ï¿½fï¿½Bï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Wï¿½ï¿½nï¿½ï¿½
+	virtual void	point(jhl_xy_i& pos, int size = 3) = 0;
 	virtual void	line(jhl_xy_i& start, jhl_xy_i& end) = 0;		
 	virtual void	circle(jhl_xy_i& pos, int r, jhl_rgb&, int thickness = 1 ) = 0;
 
 	virtual void	point_z(jhl_xy_i& pos, float depth) = 0;
 
-	// ’ŠÛƒNƒ‰ƒX‚Å‚ÌÀ‘• 
-	virtual void	rectangle(jhl_xy_i& start, jhl_xy_i& end, jhl_rgb& color, int thickness = 1) = 0;	// ƒ‚ƒfƒ‹•`‰æ‚É‚Íg‚í‚È‚¢
+	// ï¿½ï¿½ï¿½ÛƒNï¿½ï¿½ï¿½Xï¿½Å‚Ìï¿½ï¿½ï¿½ 
+	virtual void	rectangle(jhl_xy_i& start, jhl_xy_i& end, jhl_rgb& color, int thickness = 1) = 0;	// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½`ï¿½ï¿½É‚Ígï¿½ï¿½È‚ï¿½
 	void	triangle(jhl_xyz verts[3]);
 	virtual void	line_h(unsigned int v, float h_start, float h_end) = 0;
 

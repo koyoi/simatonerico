@@ -1,7 +1,7 @@
 :version
 3
-# ver3 uv tex ‚ ‚è
-# ƒp[ƒT[‚ª‚ ‚Ù‚È‚Ì‚Å‚ ‚ñ‚Ü‚èG‚ç‚È‚¢
+# ver3 uv tex ï¿½ï¿½ï¿½ï¿½
+# ï¿½pï¿½[ï¿½Tï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Ù‚È‚Ì‚Å‚ï¿½ï¿½ï¿½Ü‚ï¿½Gï¿½ï¿½È‚ï¿½
 :name
 triangle
 :vertex
@@ -13,7 +13,7 @@ triangle
 :polygon
 2
 1,0,2
-1,2,3
+1,3,2
 :groups
 2
 :attrib_target
@@ -36,7 +36,7 @@ dummy.png
 250,250
 ::UV
 3,2,0
-3,0,1
+3,1,0
 ::member
 2
 0

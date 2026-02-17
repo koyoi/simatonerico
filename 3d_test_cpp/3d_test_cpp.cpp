@@ -3,8 +3,12 @@
 #ifdef _WIN32_
 #include "windows.h"
 
+// USE_GDIPLUS ã¯ stdafx.h ã§å®šç¾©æ¸ˆã¿
+
+#ifndef USE_GDIPLUS
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#endif
 #endif
 
 
@@ -15,8 +19,13 @@
 #include "readData.h"
 
 #ifdef _WIN32_
+#ifdef USE_GDIPLUS
+#include "hal_gfx_gdiplus.h"
+disp_gdiplus	painter;
+#else
 #include "hal_gfx_ocv.h"
 disp_ocv2	painter;
+#endif
 #else	// ameba
 
 #endif
@@ -24,11 +33,12 @@ disp_ocv2	painter;
 
 jhl_xy_i window = { 640, 480 };
 
-#ifdef PC1
-const std::string data_basedir = { "C:\\soukoRW\\3d_test_cpp\\3d_test_cpp\\data" };
-#else
-const std::string data_basedir = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data" };
-#endif
+//#ifdef PC1
+//const std::string data_basedir = { "C:\\soukoRW\\3d_test_cpp\\3d_test_cpp\\data" };
+//#else
+//const std::string data_basedir = { "L:\\users\\mayura.kage7\\Documents\\My Dropbox\\jhl_3d\\3d_test_cpp\\data" };
+//#endif
+const std::string data_basedir = { "data" };
 const std::string data_file[] = { "dat.txt",
 								"dat_cube.txt" };
 
@@ -36,7 +46,9 @@ const std::string data_file[] = { "dat.txt",
 
 
 // ---------------------------------------------------
+#ifndef USE_GDIPLUS
 static void mouse_event(int event, int x, int y, int flags, void* param);
+#endif
 static int proc_key(char);
 static void draw_info();
 static void obj_attribs_init();
@@ -57,12 +69,13 @@ struct sceneObj
 	matHomo4	acc;
 	matHomo4	trans;
 	jhl_size	size = 1;
-	//	jhl_xyz	move_vect_ofst;		// todo ƒ[ƒJƒ‹‚ÌŒ´“_ˆÈŠO‚ğ’†S‚É‰ñ“]‚µ‚½‚¢‚Æ‚«
+	//	jhl_xyz	move_vect_ofst;		// todo ãƒ­ãƒ¼ã‚«ãƒ«ã®åŸç‚¹ä»¥å¤–ã‚’ä¸­å¿ƒã«å›è»¢ã—ãŸã„ã¨ã
 	bool		is_moved;
 	object		obj;
 
 	bool		attrib_override;
 	jhl_rgb		color;
+	bool		visible = true;		// è¡¨ç¤ºãƒ•ãƒ©ã‚°ï¼ˆã‚­ãƒ¼1,2,3ã§åˆ‡ã‚Šæ›¿ãˆï¼‰
 };
 
 
@@ -83,8 +96,8 @@ int		frame_step = 0;
 
 jhl_rgb	font_color_info_defaut = jhl_rgb(0, 255, 255);
 
-modelData	models[NUM_MODEL];	//	ƒ|ƒŠƒSƒ“ƒ‚ƒfƒ‹‚»‚Ì‚à‚Ì‚ÆA‚»‚ê‚É“K—p‚·‚éƒAƒtƒBƒ“•ÏŠ·‚ÌÅI“I‚Èƒ}ƒgƒŠƒbƒNƒX
-sceneObj	obj[NUM_OBJ];		//	ˆÊ’uE‰ñ“]A‘¬“x‚»‚Ì‘¼”X
+modelData	models[NUM_MODEL];	//	ãƒãƒªã‚´ãƒ³ãƒ¢ãƒ‡ãƒ«ãã®ã‚‚ã®ã¨ã€ãã‚Œã«é©ç”¨ã™ã‚‹ã‚¢ãƒ•ã‚£ãƒ³å¤‰æ›ã®æœ€çµ‚çš„ãªãƒãƒˆãƒªãƒƒã‚¯ã‚¹
+sceneObj	obj[NUM_OBJ];		//	ä½ç½®ãƒ»å›è»¢ã€é€Ÿåº¦ãã®ä»–è«¸ã€…
 
 unsigned int	obj_vertex_size_max;	// todo
 
@@ -93,7 +106,7 @@ int main(int argc, char *argv[])
 	unsigned long	frame_time = 100;	// [ms]
 
 	jhl3Dlib::set_painter(painter);
-	painter.disp_init(window);	// 640 x 480 ‚Ì3ƒŒƒCƒ„[(BGR)‚ÅFƒoƒbƒtƒ@‚ğ¶¬E‰Šú‰»
+	painter.disp_init(window);	// 640 x 480 ã®3ãƒ¬ã‚¤ãƒ¤ãƒ¼(BGR)ã§è‰²ãƒãƒƒãƒ•ã‚¡ã‚’ç”Ÿæˆãƒ»åˆæœŸåŒ–
 
 	{
 		int vp_far = -100;
@@ -104,12 +117,12 @@ int main(int argc, char *argv[])
 		float btm = -top;
 		viewport_area = { vp_far, vp_near,  (int)left, (int)right, (int)top, (int)btm };
 	}
-	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : ƒp[ƒX‚ ‚èB
+	jhl3Dlib::set_proj_mat(viewport_area, false);	// false : ãƒ‘ãƒ¼ã‚¹ã‚ã‚Šã€‚
 
 
-	// ŒõŒ¹
+	// å…‰æº
 	jhl_rgb		light_ambient = { .5f, .5f, .5f };
-	dir_light	lights[ N_PARA_LIGHTS ];			// •ÀsŒõŒ¹@•ûŒüAFB•ûŒü‚ÍA³‹K‰»‚µ‚Ä‚È‚¢‚Æ•s³‚É‚È‚é‚©‚à
+	dir_light	lights[ N_PARA_LIGHTS ];			// ä¸¦è¡Œå…‰æºã€€æ–¹å‘ã€è‰²ã€‚æ–¹å‘ã¯ã€æ­£è¦åŒ–ã—ã¦ãªã„ã¨ä¸æ­£ã«ãªã‚‹ã‹ã‚‚
 
 	lights[0].dir = jhl_xyz(0.f, 1.f, -0.3f).normalize();
 	lights[0].col = jhl_rgb(0.8f, 0.2f, 0.1f);
@@ -122,7 +135,7 @@ int main(int argc, char *argv[])
 	jhl3Dlib::num_light_dir = N_PARA_LIGHTS;
 
 
-	// ƒrƒ…[s—ñ¶¬
+	// ãƒ“ãƒ¥ãƒ¼è¡Œåˆ—ç”Ÿæˆ
 	jhl_xyz eye = jhl_xyz(0.f, 0.f, 20.f);
 	jhl_xyz tgt = jhl_xyz(0.f, 0.f, 0.f);
 	jhl_xyz	u   = jhl_xyz(0.f, 1.f, 0.f);
@@ -130,12 +143,12 @@ int main(int argc, char *argv[])
 //	std::cout << "view_mat" << std::endl;
 //	std::cout << jhl3Dlib::view_mat << std::endl;
 
-	// ƒfƒBƒXƒvƒŒƒC•ÏŠ·
+	// ãƒ‡ã‚£ã‚¹ãƒ—ãƒ¬ã‚¤å¤‰æ›
 	jhl3Dlib::set_disp_trans(window);
 
 	jhl3Dlib::set_draw_type(drawType_flat_lighting);
 
-	// ƒtƒ@ƒCƒ‹“Ç‚İ‚İ
+	// ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿
 	int rv;
 	rv = read_data_file();
 	if (rv < 0)
@@ -143,7 +156,7 @@ int main(int argc, char *argv[])
 		exit(rv);
 	};
 
-	// À•W•ÏŠ·‚ÌƒLƒƒƒbƒVƒ…‰Šú‰»
+	// åº§æ¨™å¤‰æ›ã®ã‚­ãƒ£ãƒƒã‚·ãƒ¥åˆæœŸåŒ–
 	if (!jhl3Dlib::transToDisp_cache_init(obj_vertex_size_max))
 	{
 		std::cout << "vertex trans cache alloc fail ( memory short ). nocache mode." << std::endl;
@@ -153,7 +166,7 @@ int main(int argc, char *argv[])
 
 
 #ifdef _WIN32_
-	// ƒ}ƒEƒXƒCƒxƒ“ƒg‚ÉŠÖ”mouse_event‚Ìˆ—‚ğs‚¤
+	// ãƒã‚¦ã‚¹ã‚¤ãƒ™ãƒ³ãƒˆæ™‚ã«é–¢æ•°mouse_eventã®å‡¦ç†ã‚’è¡Œã†
 //	cv::setMouseCallback("img", mouse_event);
 #else
 #endif
@@ -173,16 +186,20 @@ int main(int argc, char *argv[])
 	char k = 1;
 	while (k != 'q')
 	{
+#ifdef USE_GDIPLUS
+		k = (char)waitKeyGdiplus(1);
+#else
 		k = cv::waitKey(1);
+#endif
 		proc_key(k);
 		if (frame_pause) {
 			Sleep(300);
-			continue;    // Ÿ‚Ìƒ‹[ƒv‚Ö
+			continue;    // æ¬¡ã®ãƒ«ãƒ¼ãƒ—ã¸
 		}
 
 		//		std::cout << std::endl << "frame " << frame << std::endl;
 
-		if (area_changed)	// UI‘€ì
+		if (area_changed)	// UIæ“ä½œ
 		{
 			jhl3Dlib::set_proj_mat(viewport_area, false);
 			area_changed = false;
@@ -190,7 +207,7 @@ int main(int argc, char *argv[])
 
 		if (frame_step == 0)
 		{
-			next_frame();	// ƒQ[ƒ€“à‚ÌŠÔ‚ği‚ß‚é
+			next_frame();	// ã‚²ãƒ¼ãƒ å†…ã®æ™‚é–“ã‚’é€²ã‚ã‚‹
 			frame += 1;
 		}
 		else if (frame_step == 1)
@@ -202,11 +219,13 @@ int main(int argc, char *argv[])
 
 		painter.disp_clear();
 		int rv;
-		// ÀÛ‚Ì•`‰æ
+		// å®Ÿéš›ã®æç”»
 #if 1
 		for (int i = 0; i < NUM_OBJ; i++)
 		{
-			rv = jhl3Dlib::draw(obj[i].obj);
+			if (obj[i].visible) {
+				rv = jhl3Dlib::draw(obj[i].obj);
+			}
 		}
 
 #else
@@ -228,17 +247,17 @@ int main(int argc, char *argv[])
 }
 
 
-static void next_frame( /*‚È‚É‚©H*/)
+static void next_frame()
 {
-	// UI‘€ì
+	// UIæ“ä½œ
 	{
 		// todo
 	}
 
-	// XV‚Å‚ÌƒIƒuƒWƒFƒNƒg•ÏX‚¾‚Æ‚©
+	// æ™‚åˆ»æ›´æ–°ã§ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå¤‰æ›´ã ã¨ã‹
 	for (int i = 0; i < NUM_OBJ; i++)
 	{
-		// ‹ÇŠ“I‚È•ÏŠ·iƒAƒjƒ[ƒVƒ‡ƒ“‚âƒ{[ƒ“•ÏŒ`j
+		// å±€æ‰€çš„ãªå¤‰æ›ï¼ˆã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚„ãƒœãƒ¼ãƒ³å¤‰å½¢ï¼‰
 		// todo
 
 		obj[i].trans = obj[i].acc * obj[i].trans;
@@ -248,14 +267,14 @@ static void next_frame( /*‚È‚É‚©H*/)
 
 
 
-// ƒIƒuƒWƒFƒNƒg‚Ì‰Šúİ’è
-// ˆÊ’u‚Æ‚©F‚Æ‚©
+// ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®åˆæœŸè¨­å®š
+// ä½ç½®ã¨ã‹è‰²ã¨ã‹
 static void obj_attribs_init()
 {
 	sceneObj*	p_objTgt;
 
 	p_objTgt = &obj[0];
-	// ƒIƒuƒWƒFƒNƒg‚ÌˆÊ’u
+	// ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ä½ç½®
 	p_objTgt->pos = jhl_xyz(0, 0, -25);
 	p_objTgt->trans = 1;
 	//	p_objTgt->trans.rot_axis_x(0.2f);
@@ -266,7 +285,7 @@ static void obj_attribs_init()
 	p_objTgt->acc.rot_axis_x(0.1f / 3.14);
 	//	p_objTgt->acc.rot_axis_y(0.3f/3.14);
 	//	p_objTgt->acc.rot_axis_z(0.2f/3.14);
-	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.01f);	// ‘±‚¯‚Ä‚½‚çnormalize‚Ìfp16—Êq‰»Œë·‚Ì’~Ï‚Å‚í‚¸‚©‚ÉŠeh‚Í‚¢‚é‚©‚à—û‚ªA‚»‚ê‚ğŒ¾‚Á‚½‚çB
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.1f, 0.12f, 0.15f).normalize(), 0.01f);	// ç¶šã‘ã¦ãŸã‚‰normalizeã®fp16é‡å­åŒ–èª¤å·®ã®è“„ç©ã§ã‚ãšã‹ã«å„å®¿ã¯ã„ã‚‹ã‹ã‚‚è©¦ç·´ãŒã€ãã‚Œã‚’è¨€ã£ãŸã‚‰ã€‚
 	p_objTgt->size = 5;
 	//	p_objTgt->size *= jhl_size(1, 2, 3);
 	p_objTgt->is_moved = true;
@@ -280,7 +299,7 @@ static void obj_attribs_init()
 	p_objTgt->trans = 1;
 	p_objTgt->acc = matHomo4(1);
 	//	p_objTgt->acc.rot_axis_x(0.2f);
-	p_objTgt->acc.rot_axis_y((float)0.12f / 3.14);
+	p_objTgt->acc.rot_axis_y(0.12f / 3.14f);
 	//	p_objTgt->acc.rot_axis_z(0.4f);
 	p_objTgt->acc.rot_by_vec(jhl_xyz(0.9f, 0.7f, 0.4f).normalize(), 0.13f);
 	p_objTgt->size = 2;
@@ -294,9 +313,8 @@ static void obj_attribs_init()
 	p_objTgt->pos = jhl_xyz(-2, 4, -30);
 	p_objTgt->trans = 1;
 	p_objTgt->acc = 1;
-	//	p_objTgt->acc.rot_axis_x((float)(0.25f / 3.14));
-	//	p_objTgt->acc.rot_by_vec(0.1f, 0.12f, 0.15f, 0.21f);
-	p_objTgt->acc.rot_by_vec(jhl_xyz(0.3f, 0.1f, 0.9f).normalize(), 0.05f);
+	p_objTgt->acc.rot_axis_x(0.02f);  // Xè»¸å›è»¢ã‚’è¿½åŠ ã—ã¦è¡¨é¢ãŒè¦‹ãˆã‚‹ã‚ˆã†ã«
+	p_objTgt->acc.rot_by_vec(jhl_xyz(0.5f, 0.8f, 0.3f).normalize(), 0.03f);
 	p_objTgt->size = 1.5;
 	//	p_objTgt->size *= jhl_size(1, 2, 3);
 	p_objTgt->obj.p_model = &models[0];
@@ -304,7 +322,7 @@ static void obj_attribs_init()
 	p_objTgt->obj.force_color = jhl_rgb(255, 220, 50);
 }
 
-// •Ô’l–¢’è
+// è¿”å€¤æœªå®š
 static int read_data_file()
 {
 	int rv = 0;
@@ -335,7 +353,19 @@ static int read_data_file()
 
 int proc_key(char key)
 {
-	// ƒJƒƒ‰‚Ì•Ï‰»
+	// ã‚­ãƒ¼ãƒªãƒ”ãƒ¼ãƒˆé˜²æ­¢ï¼ˆãƒˆã‚°ãƒ«ç³»ã®ã‚­ãƒ¼ç”¨ï¼‰
+	static char last_toggle_key = 0;
+	if (key == last_toggle_key) {
+		return 0;  // åŒã˜ã‚­ãƒ¼ãŒæŠ¼ã•ã‚Œç¶šã‘ã¦ã„ã‚‹é–“ã¯ç„¡è¦–
+	}
+	// ãƒˆã‚°ãƒ«ç³»ã‚­ãƒ¼ ('1', '2', '3') ã®å ´åˆã®ã¿è¨˜éŒ²
+	if (key == '1' || key == '2' || key == '3') {
+		last_toggle_key = key;
+	} else {
+		last_toggle_key = 0;  // ä»–ã®ã‚­ãƒ¼ã§ãƒªã‚»ãƒƒãƒˆ
+	}
+
+	// ã‚«ãƒ¡ãƒ©ã®å¤‰åŒ–
 	switch (key)
 	{
 		#if 0
@@ -365,12 +395,12 @@ int proc_key(char key)
 		break;
 
 #endif
-		// ƒŒƒ“ƒ_ƒŠƒ“ƒOƒ^ƒCƒv•ÏX
+		// ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã‚¿ã‚¤ãƒ—å¤‰æ›´
 	case('t'):
 		jhl3Dlib::draw_type_next();
 		break;
 
-		// ƒIƒuƒWƒFƒNƒg‚ÌˆÊ’u
+		// ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ä½ç½®
 	case('s'):
 		obj[0].pos.y +=1;
 		break;
@@ -395,7 +425,7 @@ int proc_key(char key)
 		obj[0].pos.z = 0;
 		break;
 
-		// ƒV[ƒ“§Œä
+		// ã‚·ãƒ¼ãƒ³åˆ¶å¾¡
 	case('p'):
 		if (frame_step != 0)
 		{
@@ -413,6 +443,20 @@ int proc_key(char key)
 	case('n'):
 		frame_step = 1;
 		std::cout << "frame step.(n) \"p\"to resume." << std::endl;
+		break;
+
+		// ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆè¡¨ç¤ºåˆ‡ã‚Šæ›¿ãˆ
+	case('1'):
+		obj[0].visible = !obj[0].visible;
+		std::cout << "obj[0] visible: " << (obj[0].visible ? "ON" : "OFF") << std::endl;
+		break;
+	case('2'):
+		obj[1].visible = !obj[1].visible;
+		std::cout << "obj[1] visible: " << (obj[1].visible ? "ON" : "OFF") << std::endl;
+		break;
+	case('3'):
+		obj[2].visible = !obj[2].visible;
+		std::cout << "obj[2] visible: " << (obj[2].visible ? "ON" : "OFF") << std::endl;
 		break;
 
 	default:
@@ -442,17 +486,18 @@ void draw_info()
 #endif
 }
 
+#ifndef USE_GDIPLUS
 static void mouse_event(int event, int x, int y, int flags, void* param)
 {
-	// ƒCƒxƒ“ƒgƒeƒXƒg
+	// ã‚¤ãƒ™ãƒ³ãƒˆãƒ†ã‚¹ãƒˆ
 	{
-		// ¶ƒNƒŠƒbƒN‚ÅÔ‚¢‰~Œ`‚ğ¶¬
+		// å·¦ã‚¯ãƒªãƒƒã‚¯ã§èµ¤ã„å††å½¢ã‚’ç”Ÿæˆ
 		if (event == cv::EVENT_LBUTTONUP)
 		{
 			painter.circle(jhl_xy_i(x, y), 50, jhl_rgb(0, 0, 255));
 		}
 
-		// ‰EƒNƒŠƒbƒN + ShiftƒL[‚Å—ÎF‚ÌƒeƒLƒXƒg‚ğ¶¬
+		// å³ã‚¯ãƒªãƒƒã‚¯ + Shiftã‚­ãƒ¼ã§ç·‘è‰²ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’ç”Ÿæˆ
 		else if (event == cv::EVENT_RBUTTONUP && (flags & cv::EVENT_FLAG_SHIFTKEY))
 		{
 			painter.putText("CLICK!!", jhl_xy_i(x, y),
@@ -460,7 +505,7 @@ static void mouse_event(int event, int x, int y, int flags, void* param)
 				jhl_rgb(0, 255, 0)/*, 3, cv2.CV_AA*/);
 		}
 
-		// ‰EƒNƒŠƒbƒN‚Ì‚İ‚ÅÂ‚¢lŠpŒ`‚ğ¶¬
+		// å³ã‚¯ãƒªãƒƒã‚¯ã®ã¿ã§é’ã„å››è§’å½¢ã‚’ç”Ÿæˆ
 		else if (event == cv::EVENT_RBUTTONUP)
 		{
 			painter.rectangle(jhl_xy_i(x - 100, y - 100), jhl_xy_i(x + 100, y + 100), jhl_rgb(255, 0, 0), -1);
@@ -484,3 +529,4 @@ static void mouse_event(int event, int x, int y, int flags, void* param)
 	}
 #endif
 }
+#endif

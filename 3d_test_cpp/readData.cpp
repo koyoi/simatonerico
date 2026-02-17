@@ -1,9 +1,9 @@
 #include "stdafx.h"
 
 /*
-	À¿Awindows + opencv ê—p
+	ï¿½ï¿½ï¿½ï¿½ï¿½Awindows + opencv ï¿½ï¿½p
 
-	xml ‚É‚·‚é‚©...
+	xml ï¿½É‚ï¿½ï¿½é‚©...
 */
 
 #include <string>    // useful for reading and writing
@@ -35,12 +35,12 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 	std::string temp_str_parse;
 	attr_type tgt_type = eATTR_FLAT;
 
-	// todo ƒGƒ‰[‚ÌŠùŠm•Û‚Ì‰ğ•ú
+	// todo ï¿½Gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ÌŠï¿½ï¿½mï¿½Û‚Ì‰ï¿½ï¿½
 	while ( std::getline(reading_file, reading_line_buffer) )
 	{
-		if (reading_line_buffer[0] == '#')		// ƒRƒƒ“ƒg
+		if (reading_line_buffer[0] == '#')		// ï¿½Rï¿½ï¿½ï¿½ï¿½ï¿½g
 		{
-			// ƒRƒƒ“ƒgs
+			// ï¿½Rï¿½ï¿½ï¿½ï¿½ï¿½gï¿½s
 		}
 		else if (reading_line_buffer[0] == ':')
 		{
@@ -50,15 +50,15 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				reading_file >> i;
 				if (i != 3)
 				{
-					std::cout << "ƒf[ƒ^ƒtƒ@ƒCƒ‹‚ÌŒ`®‚ª‘Î‰‚µ‚Ä‚¢‚È‚¢ƒo[ƒWƒ‡ƒ“‚Á‚Û‚¢‚Å‚·B" << std::endl;
+					std::cout << "ï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÌŒ`ï¿½ï¿½ï¿½ï¿½ï¿½Î‰ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½È‚ï¿½ï¿½oï¿½[ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Û‚ï¿½ï¿½Å‚ï¿½ï¿½B" << std::endl;
 					return 0;
 				}
 			}
-			else if (reading_line_buffer == ":name")	// ƒ‚ƒfƒ‹–¼iƒfƒoƒbƒO‚Æ‚©‚É•Ö—˜‚©‚à‚Æ
+			else if (reading_line_buffer == ":name")	// ï¿½ï¿½ï¿½fï¿½ï¿½ï¿½ï¿½ï¿½iï¿½fï¿½oï¿½bï¿½Oï¿½Æ‚ï¿½ï¿½É•Ö—ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			{
 				reading_file >> model.name;
 			}
-			else if (reading_line_buffer == ":vertex")	// ’¸“_À•W
+			else if (reading_line_buffer == ":vertex")	// ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½W
 			{
 				reading_file >> model.n_vert;
 				model.verts = new jhl_xyz[model.n_vert];
@@ -74,7 +74,7 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				}
 			}
 
-			else if (reading_line_buffer == ":polygon")	// ƒ|ƒŠƒSƒ“’è‹`(’¸“_‚ÌƒCƒ“ƒfƒbƒNƒX)
+			else if (reading_line_buffer == ":polygon")	// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ï¿½`(ï¿½ï¿½ï¿½_ï¿½ÌƒCï¿½ï¿½ï¿½fï¿½bï¿½Nï¿½X)
 			{
 				reading_file >> model.n_pol;
 				model.poldef = new pol_def[model.n_pol];
@@ -90,7 +90,7 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				}
 			}
 
-			else if (reading_line_buffer == ":groups")	// ƒOƒ‹[ƒv‚ª‚¢‚­‚Â‚ ‚é‚©B
+			else if (reading_line_buffer == ":groups")	// ï¿½Oï¿½ï¿½ï¿½[ï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½é‚©ï¿½B
 			{
 				reading_file >> model.n_groups;
 				model.group = new pol_group[model.n_groups];
@@ -101,7 +101,7 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 				}
 			}
 
-			else if (reading_line_buffer == ":attrib_target")	// ƒ^[ƒQƒbƒg‚ÌƒOƒ‹[ƒv‚ÌF‚Ì“h‚è•û
+			else if (reading_line_buffer == ":attrib_target")	// ï¿½^ï¿½[ï¿½Qï¿½bï¿½gï¿½ÌƒOï¿½ï¿½ï¿½[ï¿½vï¿½ÌFï¿½Ì“hï¿½ï¿½ï¿½
 			{
 				reading_file >> attr_target;
 				reading_file >> temp_str_parse;
@@ -135,16 +135,16 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 			{
 				int i;
 				reading_file >> i;
-				model.group[attr_target].n_member = i;	// ƒ|ƒŠƒSƒ“”Ô†;
-				model.group[attr_target].member = new int[i];	// ƒ|ƒŠƒSƒ“”Ô†;
+				model.group[attr_target].n_member = i;	// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ôï¿½;
+				model.group[attr_target].member = new int[i];	// ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½Ôï¿½;
 				if (model.group[attr_target].member == NULL)
 				{
 					std::cout << "attr_flat member buff allocate failed" << std::endl;
 					return -6;
 				}
 
-				// •s’è’·‚ÌƒJƒ“ƒ}‹æØ‚è‚ğƒp[ƒX‚·‚é‚Ì‚Í‘å•Ï‚»‚¤‚È‚Ì‚Å‰üs‹æØ‚èB
-				// ˆÚA‚ğl‚¦‚Ävector‚Íg‚í‚È‚¢•û‚ª‚¢‚¢‚©‚à‚Æ
+				// ï¿½sï¿½è’·ï¿½ÌƒJï¿½ï¿½ï¿½}ï¿½ï¿½Ø‚ï¿½ï¿½ï¿½pï¿½[ï¿½Xï¿½ï¿½ï¿½ï¿½Ì‚Í‘ï¿½Ï‚ï¿½ï¿½ï¿½ï¿½È‚Ì‚Å‰ï¿½ï¿½sï¿½ï¿½Ø‚ï¿½B
+				// ï¿½ÚAï¿½ï¿½ï¿½lï¿½ï¿½ï¿½ï¿½vectorï¿½Ígï¿½ï¿½È‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 				for (int cnt_member = 0; cnt_member < i; cnt_member++)
 				{
 					reading_file >> model.group[attr_target].member[cnt_member];
@@ -163,14 +163,24 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 			{
 				if (tgt_type == eATTR_TEX)
 				{
-					attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;	// todo ‚±‚¤‚¢‚¤ƒLƒƒƒXƒg‚·‚é‚ÆŒ©‚É‚­‚¢‚È‚Ÿ
-					reading_file >> temp_attrib_tex->texName;	// ‚Æ‚è‚ ‚¦‚¸B
+					attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;	// todo ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½Xï¿½gï¿½ï¿½ï¿½ï¿½ÆŒï¿½ï¿½É‚ï¿½ï¿½ï¿½ï¿½È‚ï¿½
+					reading_file >> temp_attrib_tex->texName;	// ï¿½Æ‚è‚ ï¿½ï¿½ï¿½ï¿½ï¿½B
 					std::string temp = basedir + "\\" + temp_attrib_tex->texName;
 					const char* texname = temp.c_str();
 
-					std::cout << "tex file :" << texname << "read" << std::endl;
+					std::cout << "tex file :" << texname << " read" << std::endl;
+#ifdef USE_GDIPLUS
+					// GDI+ ã§ãƒ†ã‚¯ã‚¹ãƒãƒ£èª­ã¿è¾¼ã¿
+					int len = MultiByteToWideChar(CP_ACP, 0, texname, -1, NULL, 0);
+					wchar_t* wtexname = new wchar_t[len];
+					MultiByteToWideChar(CP_ACP, 0, texname, -1, wtexname, len);
+					temp_attrib_tex->Tex = new Gdiplus::Bitmap(wtexname);
+					delete[] wtexname;
+					if(temp_attrib_tex->Tex && temp_attrib_tex->Tex->GetLastStatus() == Gdiplus::Ok)
+#else
 					temp_attrib_tex->Tex = cv::imread(texname);
 					if(1)
+#endif
 					{
 						std::cout << " [ok]" << std::endl;
 					}
@@ -189,7 +199,7 @@ int read_and_perse_data(modelData& model, std::string basedir, std::string filen
 
 			else if (reading_line_buffer == "::UVvtx")
 			{
-				// —v‘f”‚ÍŠù’m
+				// ï¿½vï¿½fï¿½ï¿½ï¿½ÍŠï¿½ï¿½m
 				attrib_tex *temp_attrib_tex = (attrib_tex*)model.group[attr_target].attrib;
 
 
